@@ -1,0 +1,35 @@
+# Dependencies and build artifacts
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.svelte-kit/
+frontend/build/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation and plans
+docs/
+.claude/
+*.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dev cache (will be recreated in container)
+backend/.cache/

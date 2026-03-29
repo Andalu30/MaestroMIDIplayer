@@ -1,0 +1,18 @@
+[project]
+name = "maestro-midi-player"
+version = "0.1.0"
+description = "Web app to browse and play MAESTRO v3.0.0 MIDI dataset"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "httpx>=0.28",
+    "pydantic-settings>=2.13.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+]

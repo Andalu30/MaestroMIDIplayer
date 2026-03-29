@@ -1,0 +1,16 @@
+services:
+  maestro:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the MIDI dataset (read-only)
+      - ./MaestroDataset:/data:ro
+      # Persist composer image cache across restarts
+      - composer-cache:/app/backend/.cache/composer_images
+    environment:
+      - MAESTRO_DATASET_PATH=/data
+    restart: unless-stopped
+
+volumes:
+  composer-cache:
