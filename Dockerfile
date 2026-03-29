@@ -22,9 +22,6 @@ RUN uv sync --frozen --no-dev
 # Copy backend source
 COPY backend/ ./
 
-# Dataset is relatively small, copy it to the image for simplicity for now
-COPY MaestroDataset/ /data/
-
 # Copy built frontend
 COPY --from=frontend-build /app/frontend/build /app/frontend/build
 
