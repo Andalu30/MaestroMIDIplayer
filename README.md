@@ -4,6 +4,11 @@ A web app for browsing and playing the [MAESTRO v3.0.0](https://magenta.tensorfl
 
 1,276 piano performances from the International Piano-e-Competition, spanning 60 composers and 10 competition years (2004–2018).
 
+> [!WARNING]
+> This application is vibecoded.
+> Do not use it as a reference for best practices in Python, FastAPI, SvelteKit, or any other technology. It is a personal project built for fun and learning, not production-quality code.
+> For more information about this please see the [about page](https://midi.andalu30.me/about).
+
 ## Features
 
 - **Browse by composer** — portrait cards with images from Wikipedia, sortable track lists

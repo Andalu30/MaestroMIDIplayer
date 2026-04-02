@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { midiPlayer } from '$lib/midi-player';
+	import { midiPlayer, type TrackInfo } from '$lib/midi-player';
 	import { currentTrack, queue } from '$lib/stores';
 	import type { Track } from '$lib/stores';
 	import { formatDuration } from '$lib/utils';
@@ -9,6 +9,7 @@
 	let fileDuration = $state(0);
 	let error = $state('');
 	let fileInputEl: HTMLInputElement;
+	let tracks = $state<TrackInfo[]>([]);
 
 	async function handleFile(file: File) {
 		if (!file.name.toLowerCase().endsWith('.mid') && !file.name.toLowerCase().endsWith('.midi')) {
@@ -22,6 +23,7 @@
 			const dur = midiPlayer.loadFromBuffer(buf);
 			fileName = file.name.replace(/\.(mid|midi)$/i, '');
 			fileDuration = dur;
+			tracks = midiPlayer.getTracks();
 
 			// Use a negative ID to signal PlayerBar that data is pre-loaded
 			const syntheticTrack: Track = {
@@ -69,6 +71,11 @@
 		const file = input.files?.[0];
 		if (file) handleFile(file);
 		input.value = '';
+	}
+
+	function toggleTrack(index: number, enabled: boolean) {
+		midiPlayer.setTrackEnabled(index, enabled);
+		tracks = midiPlayer.getTracks();
 	}
 </script>
 
@@ -136,6 +143,34 @@
 					<p class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{fileName}</p>
 					<p class="text-xs text-surface-500 dark:text-surface-400">{formatDuration(fileDuration)}</p>
 				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if tracks.length > 1}
+		<div class="mt-4 p-4 rounded-xl bg-surface-100 dark:bg-surface-800/50
+					border border-surface-200 dark:border-surface-700">
+			<h2 class="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-3">
+				Tracks ({tracks.filter(t => t.enabled).length}/{tracks.length})
+			</h2>
+			<div class="space-y-2">
+				{#each tracks as track (track.index)}
+					<label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-200/50 dark:hover:bg-surface-700/50 cursor-pointer transition-colors">
+						<input
+							type="checkbox"
+							checked={track.enabled}
+							onchange={() => toggleTrack(track.index, !track.enabled)}
+							class="w-4 h-4 rounded border-surface-300 dark:border-surface-600
+								   text-accent-500 focus:ring-accent-500/30"
+						/>
+						<div class="min-w-0 flex-1">
+							<span class="text-sm text-surface-800 dark:text-surface-200">{track.name}</span>
+							<span class="text-xs text-surface-400 dark:text-surface-500 ml-2">
+								{track.instrument} &middot; ch {track.channel} &middot; {track.noteCount} notes
+							</span>
+						</div>
+					</label>
+				{/each}
 			</div>
 		</div>
 	{/if}

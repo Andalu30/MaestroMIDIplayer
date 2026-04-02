@@ -8,6 +8,16 @@ interface MidiEvent {
 	channel: number;
 	data1: number;      // note number or CC number
 	data2: number;      // velocity or CC value
+	trackIndex: number; // which source track this event belongs to
+}
+
+export interface TrackInfo {
+	index: number;
+	name: string;
+	channel: number;
+	instrument: string;
+	noteCount: number;
+	enabled: boolean;
 }
 
 type StateChangeCallback = (state: {
@@ -18,7 +28,9 @@ type StateChangeCallback = (state: {
 
 export class MidiPlayer {
 	private outputs: MIDIOutput[] = [];
-	private events: MidiEvent[] = [];
+	private allEvents: MidiEvent[] = [];   // all events from all tracks
+	private events: MidiEvent[] = [];      // filtered by enabled tracks
+	private tracks: TrackInfo[] = [];
 	private duration = 0;
 	private tempo = 1.0;
 
@@ -93,27 +105,40 @@ export class MidiPlayer {
 	loadFromBuffer(buf: ArrayBuffer): number {
 		const midi = new Midi(buf);
 
-		// Flatten all tracks into a single sorted event list
-		this.events = [];
+		// Extract track info and build event list
+		this.allEvents = [];
+		this.tracks = [];
 
-		for (const track of midi.tracks) {
+		for (let ti = 0; ti < midi.tracks.length; ti++) {
+			const track = midi.tracks[ti];
 			const channel = track.channel;
+
+			this.tracks.push({
+				index: ti,
+				name: track.name || `Track ${ti + 1}`,
+				channel,
+				instrument: track.instrument?.name || 'unknown',
+				noteCount: track.notes.length,
+				enabled: true,
+			});
 
 			for (const note of track.notes) {
 				const velocity = Math.round(note.velocity * 127);
-				this.events.push({
+				this.allEvents.push({
 					time: note.time,
 					type: 'noteOn',
 					channel,
 					data1: note.midi,
 					data2: velocity,
+					trackIndex: ti,
 				});
-				this.events.push({
+				this.allEvents.push({
 					time: note.time + note.duration,
 					type: 'noteOff',
 					channel,
 					data1: note.midi,
 					data2: 0,
+					trackIndex: ti,
 				});
 			}
 
@@ -123,12 +148,13 @@ export class MidiPlayer {
 					const ccEvents = track.controlChanges[ccNum as unknown as number];
 					if (ccEvents) {
 						for (const cc of ccEvents) {
-							this.events.push({
+							this.allEvents.push({
 								time: cc.time,
 								type: 'cc',
 								channel,
 								data1: cc.number,
 								data2: Math.round(cc.value * 127),
+								trackIndex: ti,
 							});
 						}
 					}
@@ -137,12 +163,47 @@ export class MidiPlayer {
 		}
 
 		// Sort by time
-		this.events.sort((a, b) => a.time - b.time || (a.type === 'noteOff' ? -1 : 1));
+		this.allEvents.sort((a, b) => a.time - b.time || (a.type === 'noteOff' ? -1 : 1));
+		this.rebuildFilteredEvents();
 		this.duration = midi.duration;
 		this.pausedAt = 0;
 		this.nextEventIndex = 0;
 
 		return this.duration;
+	}
+
+	getTracks(): TrackInfo[] {
+		return this.tracks;
+	}
+
+	setTrackEnabled(trackIndex: number, enabled: boolean) {
+		const track = this.tracks.find(t => t.index === trackIndex);
+		if (!track || track.enabled === enabled) return;
+		track.enabled = enabled;
+
+		const wasPlaying = this.playing;
+		const pos = wasPlaying ? this.currentPosition() : this.pausedAt;
+
+		if (wasPlaying) {
+			this.clearScheduled();
+			this.allNotesOff();
+			this.clearActiveNotes();
+		}
+
+		this.rebuildFilteredEvents();
+		this.pausedAt = pos;
+		this.nextEventIndex = this.events.findIndex(e => e.time >= pos);
+		if (this.nextEventIndex === -1) this.nextEventIndex = this.events.length;
+
+		if (wasPlaying) {
+			this.startTime = performance.now() - (pos * 1000 / this.tempo);
+			this.scheduleEvents();
+		}
+	}
+
+	private rebuildFilteredEvents() {
+		const enabledSet = new Set(this.tracks.filter(t => t.enabled).map(t => t.index));
+		this.events = this.allEvents.filter(e => enabledSet.has(e.trackIndex));
 	}
 
 	play() {
@@ -242,7 +303,9 @@ export class MidiPlayer {
 
 	destroy() {
 		this.stop();
+		this.allEvents = [];
 		this.events = [];
+		this.tracks = [];
 		this.outputs = [];
 		this.onStateChange = null;
 	}

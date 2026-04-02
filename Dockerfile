@@ -35,6 +35,9 @@ ENV MAESTRO_DATASET_PATH=/data
 ENV MAESTRO_IMAGE_CACHE_DIR=/app/backend/.cache/composer_images
 ENV MAESTRO_HOST=0.0.0.0
 ENV MAESTRO_PORT=8000
+# Set MAESTRO_UID and MAESTRO_GID to match ownership of mounted dataset volume
+# ENV MAESTRO_UID=1000
+# ENV MAESTRO_GID=1000
 
 EXPOSE 8000
 
