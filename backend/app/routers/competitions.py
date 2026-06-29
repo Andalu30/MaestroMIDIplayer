@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from ..dataset import store
+from ..data.dataset import store
 
 router = APIRouter(prefix="/api/competitions", tags=["competitions"])
 

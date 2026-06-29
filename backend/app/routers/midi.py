@@ -4,8 +4,8 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
 
-from ..config import settings
-from ..dataset import store
+from ..core.config import settings
+from ..data.dataset import store
 
 logger = logging.getLogger("maestro.midi")
 

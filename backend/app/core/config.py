@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     port: int = 8000
     uid: Optional[int] = None
     gid: Optional[int] = None
+    # Set to "production" to disable /docs and /redoc
+    env: str = "development"
+    # Comma-separated or JSON list of allowed CORS origins.
+    cors_origins: list[str] = ["https://midi.andalu30.me", "http://localhost:8000"]
 
     model_config = {"env_prefix": "MAESTRO_"}
 

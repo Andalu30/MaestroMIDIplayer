@@ -30,6 +30,11 @@ WORKDIR /app/backend
 # Create cache directory for composer images
 RUN mkdir -p /app/backend/.cache/composer_images
 
+# Run as non-root user
+RUN useradd -m -u 1000 -s /bin/bash maestro \
+    && chown -R maestro:maestro /app
+USER maestro
+
 # Default env vars
 ENV MAESTRO_DATASET_PATH=/data
 ENV MAESTRO_IMAGE_CACHE_DIR=/app/backend/.cache/composer_images

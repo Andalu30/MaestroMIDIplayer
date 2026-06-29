@@ -10,6 +10,9 @@ services:
       - composer-cache:/app/backend/.cache/composer_images
     environment:
       - MAESTRO_DATASET_PATH=/data
+      - MAESTRO_ENV=production
+      # Set MAESTRO_CORS_ORIGINS to your deployment domain, e.g.:
+      # - MAESTRO_CORS_ORIGINS=["https://midi.example.com"]
     restart: unless-stopped
 
 volumes:

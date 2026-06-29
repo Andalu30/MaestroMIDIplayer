@@ -90,6 +90,8 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 | `MAESTRO_IMAGE_CACHE_DIR` | `.cache/composer_images` | Cache directory for composer portraits |
 | `MAESTRO_HOST` | `0.0.0.0` | Server bind address |
 | `MAESTRO_PORT` | `8000` | Server port |
+| `MAESTRO_ENV` | `development` | Set to `production` to disable the API docs UI |
+| `MAESTRO_CORS_ORIGINS` | `["http://localhost:5173","http://localhost:8000"]` | JSON list of allowed origins |
 
 ## API
 
@@ -111,17 +113,20 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 
 ```
 MaestroMIDIPlayer/
-├── MaestroDataset/              # Symlink to MAESTRO v3.0.0 dataset
+├── MaestroDataset/              # Bind-mount point for MAESTRO v3.0.0 dataset
 ├── backend/
 │   ├── pyproject.toml
 │   ├── app/
-│   │   ├── main.py              # FastAPI app, static file serving
-│   │   ├── config.py            # Settings via pydantic-settings
-│   │   ├── models.py            # Pydantic models
-│   │   ├── dataset.py           # CSV loader, in-memory store, search
-│   │   ├── filename_parser.py   # Extract round/session from filenames
-│   │   ├── composer_images.py   # Wikipedia image fetcher + cache
-│   │   ├── midi_playback.py     # Server-side MIDI engine
+│   │   ├── main.py              # FastAPI app, middleware, static file serving
+│   │   ├── core/
+│   │   │   ├── config.py        # Settings via pydantic-settings
+│   │   │   └── limiter.py       # Rate limiter instance
+│   │   ├── data/
+│   │   │   ├── models.py        # Pydantic models
+│   │   │   ├── dataset.py       # CSV loader, in-memory store, search
+│   │   │   └── filename_parser.py  # Extract round/session from filenames
+│   │   ├── services/
+│   │   │   └── composer_images.py  # Wikipedia image fetcher + cache
 │   │   └── routers/             # API route handlers
 │   └── tests/
 ├── frontend/
@@ -135,7 +140,6 @@ MaestroMIDIPlayer/
 │   │   ├── components/          # PlayerBar, SearchBar, ComposerCard, etc.
 │   │   └── routes/              # SvelteKit pages
 │   └── static/
-├── docs/                        # Architecture docs and dev log
 ├── Dockerfile                   # Multi-stage build
 └── docker-compose.yml
 ```

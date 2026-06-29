@@ -103,6 +103,9 @@ export class MidiPlayer {
 	}
 
 	loadFromBuffer(buf: ArrayBuffer): number {
+		if (buf.byteLength > 50 * 1024 * 1024) {
+			throw new Error('MIDI file too large (max 50 MB)');
+		}
 		const midi = new Midi(buf);
 
 		// Extract track info and build event list

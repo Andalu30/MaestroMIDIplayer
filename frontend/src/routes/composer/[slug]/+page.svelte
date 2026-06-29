@@ -27,10 +27,12 @@
 			tracks = t;
 			loading = false;
 
-			// Scroll to track if hash is present (e.g. from search)
-			if (window.location.hash) {
+			// Scroll to track if hash is present (e.g. from search).
+			// Validate the hash strictly: only allow #track-{integer} format.
+			const hashMatch = window.location.hash.match(/^#track-(\d+)$/);
+			if (hashMatch) {
 				await tick();
-				const el = document.querySelector(window.location.hash);
+				const el = document.getElementById(`track-${hashMatch[1]}`);
 				if (el) {
 					el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 					el.classList.add('search-highlight');

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 
-from ..composer_images import fetch_composer_image, generate_placeholder_svg, get_cached_image
-from ..dataset import store
+from ..services.composer_images import fetch_composer_image, generate_placeholder_svg, get_cached_image
+from ..data.dataset import store
+from ..core.limiter import limiter
 
 router = APIRouter(prefix="/api/composers", tags=["composers"])
 
@@ -21,7 +22,8 @@ def get_composer(slug: str):
 
 
 @router.get("/{slug}/image")
-async def get_composer_image(slug: str):
+@limiter.limit("30/minute")
+async def get_composer_image(request: Request, slug: str):
     """Serve the composer portrait image (cached or fetched from Wikipedia)."""
     composer = store.get_composer(slug)
     if not composer:

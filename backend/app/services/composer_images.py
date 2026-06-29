@@ -6,7 +6,7 @@ from pathlib import Path
 
 import httpx
 
-from .config import settings
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +162,8 @@ async def fetch_composer_image(slug: str, composer_name: str) -> Path | None:
 
 def generate_placeholder_svg(name: str) -> bytes:
     """Generate a simple SVG placeholder with the composer's initials."""
-    initials = "".join(w[0] for w in name.split() if w)[:2].upper()
+    import html
+    initials = html.escape("".join(w[0] for w in name.split() if w)[:2].upper())
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
   <rect width="400" height="400" fill="#3f3f46"/>
   <text x="200" y="200" text-anchor="middle" dominant-baseline="central"
