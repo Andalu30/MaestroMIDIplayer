@@ -36,7 +36,6 @@ A web app for browsing and playing the [MAESTRO v3.0.0](https://magenta.tensorfl
 
 - **Python 3.12+** and [uv](https://docs.astral.sh/uv/)
 - **Node.js 22+**
-- The [MAESTRO v3.0.0 dataset](https://magenta.tensorflow.org/datasets/maestro) extracted to `MaestroDataset/` (or symlinked)
 - A Chromium-based browser (Chrome, Edge) for Web MIDI API support
 
 ## Getting Started
@@ -65,7 +64,7 @@ The frontend dev server proxies API requests to `localhost:8000`. Open http://lo
 docker compose up --build
 ```
 
-This builds a single image that serves both the API and the compiled frontend on port 8000. The dataset is bind-mounted read-only.
+This builds a single image that serves both the API and the compiled frontend on port 8000. If no dataset is found at startup, the backend downloads and extracts MAESTRO v3.0.0 automatically.
 
 ### Production (without Docker)
 
@@ -87,6 +86,9 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 | Variable | Default | Description |
 |---|---|---|
 | `MAESTRO_DATASET_PATH` | `../MaestroDataset` | Path to the MAESTRO dataset directory |
+| `MAESTRO_AUTO_DOWNLOAD_DATASET` | `true` | Download and extract dataset automatically when CSV is missing |
+| `MAESTRO_DATASET_DOWNLOAD_URL` | `https://storage.googleapis.com/magentadata/datasets/maestro/v3.0.0/maestro-v3.0.0-midi.zip` | Dataset ZIP URL used for auto-download |
+| `MAESTRO_DATASET_DOWNLOAD_TIMEOUT_SECONDS` | `1800` | Timeout for dataset ZIP download |
 | `MAESTRO_IMAGE_CACHE_DIR` | `.cache/composer_images` | Cache directory for composer portraits |
 | `MAESTRO_HOST` | `0.0.0.0` | Server bind address |
 | `MAESTRO_PORT` | `8000` | Server port |
@@ -146,7 +148,7 @@ MaestroMIDIPlayer/
 
 ## Dataset
 
-The MAESTRO dataset is not included in this repository. Download it from [the official source](https://magenta.tensorflow.org/datasets/maestro) and place or symlink it as `MaestroDataset/` in the project root.
+The MAESTRO dataset is not included in this repository. If `maestro-v3.0.0.csv` is missing in `MAESTRO_DATASET_PATH`, the backend auto-downloads and extracts MAESTRO v3.0.0 at startup.
 
 The dataset is provided under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 

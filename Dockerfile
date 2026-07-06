@@ -32,7 +32,8 @@ RUN mkdir -p /app/backend/.cache/composer_images
 
 # Run as non-root user
 RUN useradd -m -u 1000 -s /bin/bash maestro \
-    && chown -R maestro:maestro /app
+    && mkdir -p /data \
+    && chown -R maestro:maestro /app /data
 USER maestro
 
 # Default env vars
