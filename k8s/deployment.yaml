@@ -48,6 +48,8 @@ spec:
           env:
             - name: MAESTRO_ENV
               value: production
+            - name: MAESTRO_IMAGE_CACHE_DIR
+              value: /cache
             # Optionally override CORS allowed origins:
             # - name: MAESTRO_CORS_ORIGINS
             #   value: '["https://midi.example.com"]'
@@ -55,7 +57,7 @@ spec:
             - name: maestro-data
               mountPath: /data
             - name: composer-cache
-              mountPath: /app/backend/.cache/composer_images
+              mountPath: /cache
           livenessProbe:
             httpGet:
               path: /api/health
@@ -92,7 +94,7 @@ spec:
   accessModes: [ReadWriteOnce]
   resources:
     requests:
-      storage: 10Gi   # MAESTRO MIDI dataset is ~10 GB
+      storage: 10Gi   # MAESTRO MIDI dataset is ~10 GiB
 
 ---
 apiVersion: v1
