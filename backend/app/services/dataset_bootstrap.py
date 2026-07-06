@@ -48,7 +48,7 @@ def ensure_dataset_available(
     if not auto_download:
         raise FileNotFoundError(f"Dataset CSV not found at {csv_path}")
 
-    logger.warning("Dataset CSV missing at %s; downloading from %s", csv_path, dataset_url)
+    logger.info("Dataset CSV missing at %s; downloading from %s", csv_path, dataset_url)
     dataset_path.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="maestro-dataset-") as temp_dir:
@@ -75,7 +75,9 @@ def ensure_dataset_available(
         except urllib.error.URLError as e:
             raise RuntimeError(f"Failed to download dataset archive from {dataset_url}: {e}") from e
 
+        logger.info("Extracting dataset archive into %s", dataset_path)
         _safe_extract(zip_tmp_path, dataset_path)
+        logger.info("Dataset archive extraction complete")
 
     if not csv_path.is_file():
         raise RuntimeError(f"Dataset download completed but CSV is missing: {csv_path}")
