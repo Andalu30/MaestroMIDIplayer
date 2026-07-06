@@ -35,13 +35,34 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 def _switch_identity() -> None:
-    """Switch process UID/GID if MAESTRO_UID/MAESTRO_GID are set."""
+    """Switch process UID/GID if MAESTRO_UID/MAESTRO_GID are set.
+
+    On OpenShift / RHEL with restricted SCC the container already runs as an
+    arbitrary non-root UID and unprivileged processes cannot call setuid/setgid.
+    Log a warning and continue rather than crashing in that case.
+    """
     if settings.gid is not None:
         logger.info("Switching GID to %d", settings.gid)
-        os.setgid(settings.gid)
+        try:
+            os.setgid(settings.gid)
+        except PermissionError:
+            logger.warning(
+                "Cannot switch GID to %d — insufficient privileges "
+                "(expected in OpenShift / rootless environments); continuing with gid=%d",
+                settings.gid,
+                os.getgid(),
+            )
     if settings.uid is not None:
         logger.info("Switching UID to %d", settings.uid)
-        os.setuid(settings.uid)
+        try:
+            os.setuid(settings.uid)
+        except PermissionError:
+            logger.warning(
+                "Cannot switch UID to %d — insufficient privileges "
+                "(expected in OpenShift / rootless environments); continuing with uid=%d",
+                settings.uid,
+                os.getuid(),
+            )
     logger.info("Running as uid=%d gid=%d", os.getuid(), os.getgid())
 
 

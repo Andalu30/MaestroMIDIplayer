@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maestro-midi-player
+  labels:
+    app: maestro-midi-player
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: maestro-midi-player
+  template:
+    metadata:
+      labels:
+        app: maestro-midi-player
+    spec:
+      # OpenShift assigns an arbitrary UID from the namespace range at runtime.
+      # runAsNonRoot enforces that constraint; we do NOT set runAsUser so
+      # OpenShift can inject the namespace UID freely.
+      # supplementalGroups: [0] ensures the container process retains GID 0,
+      # which matches the GID 0 ownership set in the image (chmod g=u).
+      securityContext:
+        runAsNonRoot: true
+        supplementalGroups:
+          - 0
+      containers:
+        - name: maestro-midi-player
+          # Replace with your registry/image:tag
+          image: maestro-midi-player:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: MAESTRO_ENV
+              value: "production"
+            - name: MAESTRO_DATASET_PATH
+              value: "/data"
+            - name: MAESTRO_IMAGE_CACHE_DIR
+              value: "/app/backend/.cache/composer_images"
+            # Uncomment and set your domain:
+            # - name: MAESTRO_CORS_ORIGINS
+            #   value: '["https://midi.example.com"]'
+          securityContext:
+            # Required by OpenShift restricted-v2 SCC
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: dataset
+              mountPath: /data
+            - name: composer-cache
+              mountPath: /app/backend/.cache/composer_images
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: dataset
+          persistentVolumeClaim:
+            claimName: maestro-dataset-pvc
+        - name: composer-cache
+          # Use emptyDir to avoid PVC permission issues for the cache.
+          # Composer images are re-fetched from Wikipedia after a pod restart.
+          # Replace with a PVC if cache persistence across restarts is desired.
+          emptyDir: {}
