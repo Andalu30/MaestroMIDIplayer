@@ -97,29 +97,7 @@ def ensure_dataset_available(
 
     with tempfile.TemporaryDirectory(prefix="maestro-dataset-") as temp_dir:
         zip_tmp_path = Path(temp_dir) / "maestro.zip"
-        try:
-            with urllib.request.urlopen(
-                dataset_url, timeout=download_timeout_seconds
-            ) as response, zip_tmp_path.open("wb") as out_file:
-                downloaded = 0
-                next_progress_bytes = PROGRESS_LOG_INTERVAL_BYTES
-                while True:
-                    chunk = response.read(DOWNLOAD_CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    out_file.write(chunk)
-                    downloaded += len(chunk)
-                    if downloaded >= next_progress_bytes:
-                        logger.info(
-                            "Downloaded %.1f MB of dataset archive",
-                            downloaded / BYTES_PER_MEGABYTE,
-                        )
-                        next_progress_bytes += PROGRESS_LOG_INTERVAL_BYTES
-                logger.info("Downloaded dataset archive (%d bytes)", downloaded)
-        except urllib.error.URLError as e:
-            raise RuntimeError(
-                f"Failed to download dataset archive from {dataset_url}: {str(e)}"
-            ) from e
+        _download_file(dataset_url, zip_tmp_path, download_timeout_seconds)
 
         logger.info("Extracting dataset archive into %s", dataset_path)
         _safe_extract(zip_tmp_path, dataset_path)
