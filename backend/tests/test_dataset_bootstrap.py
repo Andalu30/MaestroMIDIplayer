@@ -24,7 +24,9 @@ def test_returns_existing_csv(tmp_path: Path):
     csv_path = dataset_dir / DATASET_CSV_FILENAME
     csv_path.write_text("header\n", encoding="utf-8")
 
-    result = ensure_dataset_available(dataset_dir, auto_download=True)
+    result = ensure_dataset_available(
+        dataset_dir, dataset_url="https://example.test/unused.zip", auto_download=True
+    )
 
     assert result == csv_path
 
@@ -49,4 +51,6 @@ def test_raises_if_auto_download_disabled(tmp_path: Path):
     dataset_dir = tmp_path / "dataset"
 
     with pytest.raises(FileNotFoundError):
-        ensure_dataset_available(dataset_dir, auto_download=False)
+        ensure_dataset_available(
+            dataset_dir, dataset_url="https://example.test/unused.zip", auto_download=False
+        )
