@@ -1,4 +1,5 @@
 from pathlib import Path
+import urllib.request
 import zipfile
 
 import pytest
@@ -31,14 +32,21 @@ def test_returns_existing_csv(tmp_path: Path):
     assert result == csv_path
 
 
-def test_downloads_and_extracts_when_missing(tmp_path: Path):
+def test_downloads_and_extracts_when_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     dataset_dir = tmp_path / "dataset"
     zip_path = tmp_path / "maestro.zip"
     _make_zip(zip_path)
 
+    def _fake_urlopen(url: str, timeout: int):
+        assert url == "https://example.test/maestro.zip"
+        assert timeout > 0
+        return zip_path.open("rb")
+
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
+
     result = ensure_dataset_available(
         dataset_dir,
-        dataset_url=zip_path.as_uri(),
+        dataset_url="https://example.test/maestro.zip",
         auto_download=True,
     )
 
