@@ -12,6 +12,9 @@ from pathlib import Path
 logger = logging.getLogger("maestro.dataset_bootstrap")
 
 DATASET_CSV_FILENAME = "maestro-v3.0.0.csv"
+DOWNLOAD_CHUNK_SIZE = 1024 * 1024
+PROGRESS_LOG_INTERVAL_BYTES = 100 * 1024 * 1024
+DEFAULT_DOWNLOAD_TIMEOUT_SECONDS = 1800
 
 
 def _is_within_directory(base: Path, candidate: Path) -> bool:
@@ -33,7 +36,7 @@ def ensure_dataset_available(
     dataset_path: Path,
     *,
     dataset_url: str,
-    download_timeout_seconds: int = 120,
+    download_timeout_seconds: int = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
     auto_download: bool = True,
 ) -> Path:
     """Return the CSV path, downloading/extracting the dataset if needed."""
@@ -66,7 +69,7 @@ def ensure_dataset_available(
                             "Downloaded %.1f MB of dataset archive",
                             downloaded / (1024 * 1024),
                         )
-                        next_progress_bytes += 100 * 1024 * 1024
+                        next_progress_bytes += PROGRESS_LOG_INTERVAL_BYTES
                 logger.info("Downloaded dataset archive (%d bytes)", downloaded)
         except urllib.error.URLError as e:
             raise RuntimeError(f"Failed to download dataset archive from {dataset_url}: {e}") from e
