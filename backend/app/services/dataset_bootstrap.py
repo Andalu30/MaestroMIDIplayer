@@ -32,7 +32,7 @@ def _safe_extract(zip_path: Path, target_dir: Path) -> None:
             member_path = PurePosixPath(member.filename)
             if member_path.is_absolute() or ".." in member_path.parts:
                 raise RuntimeError(f"Unsafe ZIP entry blocked: {member.filename}")
-            mode = (member.external_attr >> 16) & 0o170000
+            mode = stat.S_IFMT(member.external_attr >> 16)
             if mode == stat.S_IFLNK:
                 raise RuntimeError(f"Symlink ZIP entry blocked: {member.filename}")
             destination = target_dir / member.filename
@@ -88,7 +88,9 @@ def ensure_dataset_available(
                         next_progress_bytes += PROGRESS_LOG_INTERVAL_BYTES
                 logger.info("Downloaded dataset archive (%d bytes)", downloaded)
         except urllib.error.URLError as e:
-            raise RuntimeError(f"Failed to download dataset archive from {dataset_url}: {e}") from e
+            raise RuntimeError(
+                f"Failed to download dataset archive from {dataset_url}: {str(e)}"
+            ) from e
 
         logger.info("Extracting dataset archive into %s", dataset_path)
         _safe_extract(zip_tmp_path, dataset_path)
