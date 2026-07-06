@@ -1,9 +1,37 @@
+# Multi-platform deployment manifests for MaestroMIDIplayer.
+# Supports both Kubernetes and OpenShift environments.
+#
+# Kubernetes: Use with kubectl apply -f .
+# OpenShift: Use with oc apply -f . or bundle into OperatorHub.
+#
+# CD via Keel (https://keel.sh):
+#   Keel watches GHCR for new image tags and automatically rolls out updates.
+#   The annotations below enable policy-based auto-updates — no extra pipeline needed.
+#
+# Prerequisites:
+#   - Keel installed in the cluster (https://keel.sh/docs/#installation) if automatic updates are desired.
+#   - A pull-secret for ghcr.io (if the repo is private):
+#       kubectl create secret docker-registry ghcr-secret \
+#         --docker-server=ghcr.io \
+#         --docker-username=<github-user> \
+#         --docker-password=<token>
+#   - For OpenShift: Create PVCs or use cluster storage classes
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: maestro-midi-player
   labels:
     app: maestro-midi-player
+  annotations:
+    # Keel policy: "semver" → only update when a higher semver tag is pushed.
+    # Other options: "all" (every new tag), "force" (always pull latest), "glob:v1.*"
+    keel.sh/policy: semver
+    # Trigger update approvals via Slack/webhook, or "true" for fully automatic.
+    keel.sh/trigger: poll
+    # How often Keel polls GHCR for new tags (ignored when using webhooks).
+    keel.sh/pollSchedule: "@every 24h"
 spec:
   replicas: 1
   selector:
@@ -26,7 +54,7 @@ spec:
       containers:
         - name: maestro-midi-player
           # Replace with your registry/image:tag
-          image: maestro-midi-player:latest
+          image: ghcr.io/andalu30/maestromidiplayer:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -83,3 +111,58 @@ spec:
           # Composer images are re-fetched from Wikipedia after a pod restart.
           # Replace with a PVC if cache persistence across restarts is desired.
           emptyDir: {}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: maestro-dataset-pvc
+  labels:
+    app: maestro-midi-player
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # MAESTRO v3.0.0 MIDI-only archive is ~1.4 GB; the extracted dataset
+      # including the CSV is roughly 1.5 GB.
+      storage: 3Gi
+  # Uncomment and set to a StorageClass available in your cluster:
+  # storageClassName: standard
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maestro-midi-player
+  labels:
+    app: maestro-midi-player
+spec:
+  selector:
+    app: maestro-midi-player
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+
+---
+# OpenShift Route (use only in OpenShift)
+# For plain Kubernetes, use a NodePort or LoadBalancer service instead.
+# apiVersion: route.openshift.io/v1
+# kind: Route
+# metadata:
+#   name: maestro-midi-player
+#   labels:
+#     app: maestro-midi-player
+# spec:
+#   # Replace with your actual hostname, or remove to let OpenShift auto-generate one.
+#   # host: midi.example.com
+#   to:
+#     kind: Service
+#     name: maestro-midi-player
+#   port:
+#     targetPort: http
+#   tls:
+#     termination: edge
+#     insecureEdgeTerminationPolicy: Redirect
