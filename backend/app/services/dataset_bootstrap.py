@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+import stat
 import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 logger = logging.getLogger("maestro.dataset_bootstrap")
 
@@ -27,10 +29,22 @@ def _is_within_directory(base: Path, candidate: Path) -> bool:
 def _safe_extract(zip_path: Path, target_dir: Path) -> None:
     with zipfile.ZipFile(zip_path) as archive:
         for member in archive.infolist():
+            member_path = PurePosixPath(member.filename)
+            if member_path.is_absolute() or ".." in member_path.parts:
+                raise RuntimeError(f"Unsafe ZIP entry blocked: {member.filename}")
+            mode = (member.external_attr >> 16) & 0o170000
+            if mode == stat.S_IFLNK:
+                raise RuntimeError(f"Symlink ZIP entry blocked: {member.filename}")
             destination = target_dir / member.filename
             if not _is_within_directory(target_dir, destination):
                 raise RuntimeError(f"Unsafe ZIP entry blocked: {member.filename}")
             archive.extract(member, target_dir)
+
+
+def _validate_dataset_url(dataset_url: str) -> None:
+    parsed = urllib.parse.urlparse(dataset_url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError("Dataset URL must be an absolute HTTPS URL")
 
 
 def ensure_dataset_available(
@@ -48,6 +62,7 @@ def ensure_dataset_available(
     if not auto_download:
         raise FileNotFoundError(f"Dataset CSV not found at {csv_path}")
 
+    _validate_dataset_url(dataset_url)
     logger.info("Dataset CSV missing at %s; downloading from %s", csv_path, dataset_url)
     dataset_path.mkdir(parents=True, exist_ok=True)
 

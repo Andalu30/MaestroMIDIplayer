@@ -54,3 +54,14 @@ def test_raises_if_auto_download_disabled(tmp_path: Path):
         ensure_dataset_available(
             dataset_dir, dataset_url="https://example.test/unused.zip", auto_download=False
         )
+
+
+def test_rejects_non_https_dataset_url(tmp_path: Path):
+    dataset_dir = tmp_path / "dataset"
+
+    with pytest.raises(ValueError):
+        ensure_dataset_available(
+            dataset_dir,
+            dataset_url="http://example.test/maestro.zip",
+            auto_download=True,
+        )
