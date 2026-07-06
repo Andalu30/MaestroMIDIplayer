@@ -7,12 +7,12 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     dataset_path: Path = Path(__file__).resolve().parent.parent.parent / "MaestroDataset"
     auto_download_dataset: bool = True
-    # Official MAESTRO v3.0.0 ZIP hosted by Magenta (~1.4 GB download).
+    # Official MAESTRO v3.0.0 ZIP hosted by Magenta (~60 MB download).
     dataset_download_url: str = (
         "https://storage.googleapis.com/magentadata/datasets/maestro/v3.0.0/maestro-v3.0.0-midi.zip"
     )
-    # 30 minutes allows slower home-network pulls of the ~1.4 GB archive.
-    dataset_download_timeout_seconds: int = 1800
+    # 30 minutes allows slower home-network pulls of the ~60 MB archive.
+    dataset_download_timeout_seconds: int = 10
     image_cache_dir: Path = Path(__file__).resolve().parent.parent / ".cache" / "composer_images"
     host: str = "0.0.0.0"
     port: int = 8000

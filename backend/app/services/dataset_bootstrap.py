@@ -29,21 +29,34 @@ def _is_within_directory(base: Path, candidate: Path) -> bool:
     candidate_resolved = candidate.resolve()
     return candidate_resolved == base_resolved or base_resolved in candidate_resolved.parents
 
-
 def _safe_extract(zip_path: Path, target_dir: Path) -> None:
     with zipfile.ZipFile(zip_path) as archive:
-        for member in archive.infolist():
+        members = archive.infolist()
+        # Determine the common top-level prefix to strip
+        parts_list = [PurePosixPath(m.filename).parts for m in members if m.filename]
+        prefix = parts_list[0][0] if parts_list and len(parts_list[0]) > 1 else ""
+
+        for member in members:
             member_path = PurePosixPath(member.filename)
             if member_path.is_absolute() or ".." in member_path.parts:
                 raise RuntimeError(f"Unsafe ZIP entry blocked: {member.filename}")
             mode = stat.S_IFMT(member.external_attr >> 16)
             if mode == stat.S_IFLNK:
                 raise RuntimeError(f"Symlink ZIP entry blocked: {member.filename}")
-            destination = target_dir / member.filename
+
+            # Strip the top-level folder prefix
+            stripped = member_path.relative_to(prefix) if prefix and member_path.parts[0] == prefix else member_path
+            destination = target_dir / stripped
+
             if not _is_within_directory(target_dir, destination):
                 raise RuntimeError(f"Unsafe ZIP entry blocked: {member.filename}")
-            archive.extract(member, target_dir)
 
+            if member.is_dir():
+                destination.mkdir(parents=True, exist_ok=True)
+            else:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(member) as src, destination.open("wb") as dst:
+                    dst.write(src.read())
 
 def _validate_dataset_url(dataset_url: str) -> None:
     parsed = urllib.parse.urlparse(dataset_url)
