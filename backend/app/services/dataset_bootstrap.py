@@ -58,9 +58,9 @@ def ensure_dataset_available(
                 dataset_url, timeout=download_timeout_seconds
             ) as response, zip_tmp_path.open("wb") as out_file:
                 downloaded = 0
-                next_progress_bytes = 100 * 1024 * 1024
+                next_progress_bytes = PROGRESS_LOG_INTERVAL_BYTES
                 while True:
-                    chunk = response.read(1024 * 1024)
+                    chunk = response.read(DOWNLOAD_CHUNK_SIZE)
                     if not chunk:
                         break
                     out_file.write(chunk)
