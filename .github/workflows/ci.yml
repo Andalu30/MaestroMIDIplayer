@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
       - name: Run tests
-        run: uv run pytest
+        run: PYTHONPATH=$(pwd) uv run pytest -v
 
   build-frontend:
     name: Frontend build
