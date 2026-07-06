@@ -1,0 +1,123 @@
+# Sample Kubernetes deployment for MaestroMIDIplayer. 
+# Not tested, but should work with minor adjustments.
+#
+# CD via Keel (https://keel.sh):
+#   Keel watches GHCR for new image tags and automatically rolls out updates.
+#   The annotations below enable policy-based auto-updates — no extra pipeline needed.
+#
+# Prerequisites:
+#   - Keel installed in the cluster (https://keel.sh/docs/#installation) if automatic updates are desired.
+#   - A pull-secret for ghcr.io (if the repo is private):
+#       kubectl create secret docker-registry ghcr-secret \
+#         --docker-server=ghcr.io \
+#         --docker-username=<github-user> \
+#         --docker-******
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maestro-midi-player
+  labels:
+    app: maestro-midi-player
+  annotations:
+    # Keel policy: "semver" → only update when a higher semver tag is pushed.
+    # Other options: "all" (every new tag), "force" (always pull latest), "glob:v1.*"
+    keel.sh/policy: semver
+    # Trigger update approvals via Slack/webhook, or "true" for fully automatic.
+    keel.sh/trigger: poll
+    # How often Keel polls GHCR for new tags (ignored when using webhooks).
+    keel.sh/pollSchedule: "@every 24h"
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: maestro-midi-player
+  template:
+    metadata:
+      labels:
+        app: maestro-midi-player
+    spec:
+      # imagePullSecrets:
+      #   - name: ghcr-secret  # uncomment if the GHCR repo is private
+      containers:
+        - name: maestromidi
+          # Keel will rewrite this tag automatically on each release.
+          image: ghcr.io/andalu30/maestromidiplayer:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MAESTRO_ENV
+              value: production
+            - name: MAESTRO_IMAGE_CACHE_DIR
+              value: /cache
+            # Optionally override CORS allowed origins:
+            # - name: MAESTRO_CORS_ORIGINS
+            #   value: '["https://midi.example.com"]'
+          volumeMounts:
+            - name: maestro-data
+              mountPath: /data
+            - name: composer-cache
+              mountPath: /cache
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: maestro-data
+          persistentVolumeClaim:
+            claimName: maestro-data-pvc
+        - name: composer-cache
+          persistentVolumeClaim:
+            claimName: maestro-cache-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: maestro-data-pvc
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi   # MAESTRO MIDI dataset is ~100 MB
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: maestro-cache-pvc
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 500Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maestro-midi-player
+spec:
+  selector:
+    app: maestro-midi-player
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP

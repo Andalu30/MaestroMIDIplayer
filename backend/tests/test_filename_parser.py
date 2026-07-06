@@ -1,4 +1,4 @@
-from app.filename_parser import ParsedFilename, parse_filename
+from app.data.filename_parser import ParsedFilename, parse_filename
 
 
 class TestRoundExtraction:
