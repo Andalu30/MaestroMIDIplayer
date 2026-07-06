@@ -72,6 +72,7 @@ async def lifespan(app: FastAPI):
         csv_path = ensure_dataset_available(
             settings.dataset_path,
             dataset_url=settings.dataset_download_url,
+            download_timeout_seconds=settings.dataset_download_timeout_seconds,
             auto_download=settings.auto_download_dataset,
         )
         _log_path_info("CSV file", csv_path)

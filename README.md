@@ -88,6 +88,7 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 | `MAESTRO_DATASET_PATH` | `../MaestroDataset` | Path to the MAESTRO dataset directory |
 | `MAESTRO_AUTO_DOWNLOAD_DATASET` | `true` | Download and extract dataset automatically when CSV is missing |
 | `MAESTRO_DATASET_DOWNLOAD_URL` | `https://storage.googleapis.com/magentadata/datasets/maestro/v3.0.0/maestro-v3.0.0-midi.zip` | Dataset ZIP URL used for auto-download |
+| `MAESTRO_DATASET_DOWNLOAD_TIMEOUT_SECONDS` | `1800` | Timeout for dataset ZIP download |
 | `MAESTRO_IMAGE_CACHE_DIR` | `.cache/composer_images` | Cache directory for composer portraits |
 | `MAESTRO_HOST` | `0.0.0.0` | Server bind address |
 | `MAESTRO_PORT` | `8000` | Server port |

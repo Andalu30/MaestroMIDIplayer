@@ -33,6 +33,7 @@ def ensure_dataset_available(
     dataset_path: Path,
     *,
     dataset_url: str,
+    download_timeout_seconds: int = 120,
     auto_download: bool = True,
 ) -> Path:
     """Return the CSV path, downloading/extracting the dataset if needed."""
@@ -43,22 +44,29 @@ def ensure_dataset_available(
     if not auto_download:
         raise FileNotFoundError(f"Dataset CSV not found at {csv_path}")
 
-    logger.warning("Dataset missing at %s; downloading from %s", dataset_path, dataset_url)
+    logger.warning("Dataset CSV missing at %s; downloading from %s", csv_path, dataset_url)
     dataset_path.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="maestro-dataset-") as temp_dir:
         zip_tmp_path = Path(temp_dir) / "maestro.zip"
         try:
-            with urllib.request.urlopen(dataset_url, timeout=120) as response, zip_tmp_path.open(
-                "wb"
-            ) as out_file:
+            with urllib.request.urlopen(
+                dataset_url, timeout=download_timeout_seconds
+            ) as response, zip_tmp_path.open("wb") as out_file:
                 downloaded = 0
+                next_progress_bytes = 100 * 1024 * 1024
                 while True:
                     chunk = response.read(1024 * 1024)
                     if not chunk:
                         break
                     out_file.write(chunk)
                     downloaded += len(chunk)
+                    if downloaded >= next_progress_bytes:
+                        logger.info(
+                            "Downloaded %.1f MB of dataset archive",
+                            downloaded / (1024 * 1024),
+                        )
+                        next_progress_bytes += 100 * 1024 * 1024
                 logger.info("Downloaded dataset archive (%d bytes)", downloaded)
         except urllib.error.URLError as e:
             raise RuntimeError(f"Failed to download dataset archive from {dataset_url}: {e}") from e
