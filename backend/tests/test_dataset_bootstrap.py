@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 import urllib.request
 import zipfile
@@ -6,16 +7,18 @@ import pytest
 
 from app.services.dataset_bootstrap import (
     DATASET_CSV_FILENAME,
+    DATASET_JSON_FILENAME,
+    DATASET_METADATA_BASE_URL,
     ensure_dataset_available,
 )
 
+CSV_CONTENT = b"canonical_composer,canonical_title,split,year,midi_filename,audio_filename,duration\n"
+JSON_CONTENT = b'{"metadata": []}'
+
 
 def _make_zip(zip_path: Path) -> None:
+    """Create a ZIP that only contains MIDI files (no CSV/JSON, matching real dataset)."""
     with zipfile.ZipFile(zip_path, "w") as zf:
-        zf.writestr(
-            DATASET_CSV_FILENAME,
-            "canonical_composer,canonical_title,split,year,midi_filename,audio_filename,duration\n",
-        )
         zf.writestr("sample.midi", "dummy")
 
 
@@ -37,10 +40,19 @@ def test_downloads_and_extracts_when_missing(tmp_path: Path, monkeypatch: pytest
     zip_path = tmp_path / "maestro.zip"
     _make_zip(zip_path)
 
+    csv_url = DATASET_METADATA_BASE_URL + DATASET_CSV_FILENAME
+    json_url = DATASET_METADATA_BASE_URL + DATASET_JSON_FILENAME
+
+    responses = {
+        "https://example.test/maestro.zip": zip_path.read_bytes(),
+        csv_url: CSV_CONTENT,
+        json_url: JSON_CONTENT,
+    }
+
     def _fake_urlopen(url: str, timeout: int):
-        assert url == "https://example.test/maestro.zip"
         assert timeout > 0
-        return zip_path.open("rb")
+        assert url in responses, f"Unexpected URL: {url}"
+        return io.BytesIO(responses[url])
 
     monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
 
@@ -53,6 +65,7 @@ def test_downloads_and_extracts_when_missing(tmp_path: Path, monkeypatch: pytest
     assert result == dataset_dir / DATASET_CSV_FILENAME
     assert result.is_file()
     assert (dataset_dir / "sample.midi").is_file()
+    assert (dataset_dir / DATASET_JSON_FILENAME).is_file()
 
 
 def test_raises_if_auto_download_disabled(tmp_path: Path):

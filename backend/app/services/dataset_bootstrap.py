@@ -14,6 +14,10 @@ from pathlib import Path, PurePosixPath
 logger = logging.getLogger("maestro.dataset_bootstrap")
 
 DATASET_CSV_FILENAME = "maestro-v3.0.0.csv"
+DATASET_JSON_FILENAME = "maestro-v3.0.0.json"
+DATASET_METADATA_BASE_URL = (
+    "https://storage.googleapis.com/magentadata/datasets/maestro/v3.0.0/"
+)
 DOWNLOAD_CHUNK_SIZE = 1024 * 1024
 PROGRESS_LOG_INTERVAL_BYTES = 100 * 1024 * 1024
 DEFAULT_DOWNLOAD_TIMEOUT_SECONDS = 1800
@@ -45,6 +49,31 @@ def _validate_dataset_url(dataset_url: str) -> None:
     parsed = urllib.parse.urlparse(dataset_url)
     if parsed.scheme != "https" or not parsed.netloc:
         raise ValueError("Dataset URL must be an absolute HTTPS URL")
+
+
+def _download_file(url: str, dest: Path, timeout: int) -> None:
+    """Download a single file from *url* to *dest*."""
+    logger.info("Downloading %s -> %s", url, dest)
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response, dest.open("wb") as out_file:
+            downloaded = 0
+            next_progress_bytes = PROGRESS_LOG_INTERVAL_BYTES
+            while True:
+                chunk = response.read(DOWNLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                out_file.write(chunk)
+                downloaded += len(chunk)
+                if downloaded >= next_progress_bytes:
+                    logger.info(
+                        "Downloaded %.1f MB of %s",
+                        downloaded / BYTES_PER_MEGABYTE,
+                        dest.name,
+                    )
+                    next_progress_bytes += PROGRESS_LOG_INTERVAL_BYTES
+            logger.info("Downloaded %s (%d bytes)", dest.name, downloaded)
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Failed to download {url}: {str(e)}") from e
 
 
 def ensure_dataset_available(
@@ -95,6 +124,12 @@ def ensure_dataset_available(
         logger.info("Extracting dataset archive into %s", dataset_path)
         _safe_extract(zip_tmp_path, dataset_path)
         logger.info("Dataset archive extraction complete")
+
+    # The ZIP only contains MIDI files; download the metadata files separately.
+    for filename in (DATASET_CSV_FILENAME, DATASET_JSON_FILENAME):
+        dest = dataset_path / filename
+        if not dest.is_file():
+            _download_file(DATASET_METADATA_BASE_URL + filename, dest, download_timeout_seconds)
 
     if not csv_path.is_file():
         raise RuntimeError(f"Dataset download completed but CSV is missing: {csv_path}")
