@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .core.config import settings
 from .services.composer_images import close_http_client
+from .services.dataset_bootstrap import ensure_dataset_available
 from .data.dataset import store
 from .core.limiter import limiter
 from .routers import composers, competitions, midi, tracks
@@ -61,15 +62,19 @@ def _log_path_info(label: str, path: Path) -> None:
 async def lifespan(app: FastAPI):
     logger.info("Starting Maestro MIDI Player backend")
     logger.info("Dataset path: %s", settings.dataset_path)
+    logger.info("Dataset auto-download: %s", settings.auto_download_dataset)
 
     _log_path_info("Dataset dir", settings.dataset_path)
-
-    csv_path = settings.dataset_path / "maestro-v3.0.0.csv"
-    _log_path_info("CSV file", csv_path)
 
     _switch_identity()
 
     try:
+        csv_path = ensure_dataset_available(
+            settings.dataset_path,
+            dataset_url=settings.dataset_download_url,
+            auto_download=settings.auto_download_dataset,
+        )
+        _log_path_info("CSV file", csv_path)
         store.load(csv_path)
         logger.info("Loaded %d tracks, %d composers", len(store.tracks), len(store.composers))
     except PermissionError as e:

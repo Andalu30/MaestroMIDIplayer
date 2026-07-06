@@ -4,8 +4,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount the MIDI dataset (read-only)
-      - ./MaestroDataset:/data:ro
+      # Persist downloaded dataset across restarts
+      - maestro-data:/data
       # Persist composer image cache across restarts
       - composer-cache:/app/backend/.cache/composer_images
     environment:
@@ -16,4 +16,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  maestro-data:
   composer-cache:
