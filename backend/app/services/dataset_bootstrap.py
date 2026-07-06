@@ -15,6 +15,7 @@ DATASET_CSV_FILENAME = "maestro-v3.0.0.csv"
 DOWNLOAD_CHUNK_SIZE = 1024 * 1024
 PROGRESS_LOG_INTERVAL_BYTES = 100 * 1024 * 1024
 DEFAULT_DOWNLOAD_TIMEOUT_SECONDS = 1800
+BYTES_PER_MEGABYTE = 1024 * 1024
 
 
 def _is_within_directory(base: Path, candidate: Path) -> bool:
@@ -67,7 +68,7 @@ def ensure_dataset_available(
                     if downloaded >= next_progress_bytes:
                         logger.info(
                             "Downloaded %.1f MB of dataset archive",
-                            downloaded / (1024 * 1024),
+                            downloaded / BYTES_PER_MEGABYTE,
                         )
                         next_progress_bytes += PROGRESS_LOG_INTERVAL_BYTES
                 logger.info("Downloaded dataset archive (%d bytes)", downloaded)

@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     dataset_path: Path = Path(__file__).resolve().parent.parent.parent / "MaestroDataset"
     auto_download_dataset: bool = True
-    # Official MAESTRO v3.0.0 ZIP hosted by Magenta.
+    # Official MAESTRO v3.0.0 ZIP hosted by Magenta (~1.4 GB download).
     dataset_download_url: str = (
         "https://storage.googleapis.com/magentadata/datasets/maestro/v3.0.0/maestro-v3.0.0-midi.zip"
     )
