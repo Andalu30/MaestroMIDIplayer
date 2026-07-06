@@ -1,11 +1,12 @@
-# Sample Kubernetes deployment for MaestroMIDIplayer
+# Sample Kubernetes deployment for MaestroMIDIplayer. 
+# Not tested, but should work with minor adjustments.
 #
 # CD via Keel (https://keel.sh):
 #   Keel watches GHCR for new image tags and automatically rolls out updates.
 #   The annotations below enable policy-based auto-updates — no extra pipeline needed.
 #
 # Prerequisites:
-#   - Keel installed in the cluster (https://keel.sh/docs/#installation)
+#   - Keel installed in the cluster (https://keel.sh/docs/#installation) if automatic updates are desired.
 #   - A pull-secret for ghcr.io (if the repo is private):
 #       kubectl create secret docker-registry ghcr-secret \
 #         --docker-server=ghcr.io \
@@ -25,7 +26,8 @@ metadata:
     # Trigger update approvals via Slack/webhook, or "true" for fully automatic.
     keel.sh/trigger: poll
     # How often Keel polls GHCR for new tags (ignored when using webhooks).
-    keel.sh/pollSchedule: "@every 5m"
+    keel.sh/pollSchedule: "@every 24h"
+
 spec:
   replicas: 1
   selector:
@@ -39,7 +41,7 @@ spec:
       # imagePullSecrets:
       #   - name: ghcr-secret  # uncomment if the GHCR repo is private
       containers:
-        - name: app
+        - name: maestromidi
           # Keel will rewrite this tag automatically on each release.
           image: ghcr.io/andalu30/maestromidiplayer:latest
           imagePullPolicy: Always
@@ -94,7 +96,7 @@ spec:
   accessModes: [ReadWriteOnce]
   resources:
     requests:
-      storage: 10Gi   # MAESTRO MIDI dataset is ~10 GiB
+      storage: 1Gi   # MAESTRO MIDI dataset is ~100 MB
 
 ---
 apiVersion: v1
