@@ -55,7 +55,7 @@ spec:
         - name: maestro-midi-player
           # Replace with your registry/image:tag
           image: ghcr.io/andalu30/maestromidiplayer:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
               protocol: TCP
