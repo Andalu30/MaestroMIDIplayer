@@ -1,6 +1,10 @@
 services:
   maestro:
     build: .
+    # Explicit UID:GID — GID 0 (root group) mirrors the image's file ownership
+    # so the same image runs correctly on plain Docker and on OpenShift, where
+    # an arbitrary high UID is assigned but the root group (0) is retained.
+    user: "1000:0"
     ports:
       - "8000:8000"
     volumes:

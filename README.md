@@ -66,6 +66,31 @@ docker compose up --build
 
 This builds a single image that serves both the API and the compiled frontend on port 8000. If no dataset is found at startup, the backend downloads and extracts MAESTRO v3.0.0 automatically.
 
+### Production (RHEL / OpenShift)
+
+The image is built to comply with OpenShift's **restricted / restricted-v2 SCC**:
+
+- All files are owned by `UID 1000 / GID 0` (root group) with `chmod g=u` so any arbitrary UID injected by the namespace can read and write through group 0.
+- The `USER` directive uses the numeric UID `1000` — named users are not resolvable when OpenShift assigns a high UID at runtime.
+- Port 8000 is unprivileged, no special port capabilities are required.
+- `allowPrivilegeEscalation: false` and `capabilities.drop: [ALL]` are set in the container securityContext.
+
+#### Deploy with the provided manifests
+
+```bash
+# Create the dataset PVC first
+oc apply -f openshift/pvc.yaml
+
+# Deploy the application (edit image: field first)
+oc apply -f openshift/deployment.yaml
+oc apply -f openshift/service.yaml
+oc apply -f openshift/route.yaml
+```
+
+The `openshift/` directory also contains a `route.yaml` with TLS edge termination. Set the `host:` field or remove it to let OpenShift auto-generate a hostname.
+
+> **Dataset auto-download**: the first startup downloads MAESTRO v3.0.0 (~1.4 GB) into the PVC. The PVC request is 3 Gi to leave headroom. If your cluster lacks egress access to Google Cloud Storage, pre-populate the PVC and set `MAESTRO_AUTO_DOWNLOAD_DATASET=false`.
+
 ### Production (without Docker)
 
 ```bash

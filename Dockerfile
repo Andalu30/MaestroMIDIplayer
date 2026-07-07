@@ -27,14 +27,19 @@ COPY --from=frontend-build /app/frontend/build /app/frontend/build
 
 WORKDIR /app/backend
 
-# Create cache directory for composer images
-RUN mkdir -p /app/backend/.cache/composer_images
+# Create cache and data directories
+RUN mkdir -p /app/backend/.cache/composer_images /data
 
-# Run as non-root user
-RUN useradd -m -u 1000 -s /bin/bash maestro \
-    && mkdir -p /data \
-    && chown -R maestro:maestro /app /data
-USER maestro
+# OpenShift / RHEL SCC compatibility:
+#   - Primary group set to GID 0 (root group) so the arbitrary UID assigned by
+#     OpenShift namespace ranges is always in a group that owns the files.
+#   - chmod g=u mirrors user permissions onto the group so any UID in group 0
+#     can read and write the same paths as UID 1000.
+#   - Numeric USER is required; named users are not resolvable in OpenShift.
+RUN useradd -m -u 1000 -g 0 -s /bin/bash maestro \
+    && chown -R 1000:0 /app /data \
+    && chmod -R g=u /app /data
+USER 1000
 
 # Default env vars
 ENV MAESTRO_DATASET_PATH=/data
