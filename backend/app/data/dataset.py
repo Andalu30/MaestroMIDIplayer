@@ -1,6 +1,7 @@
 """Load the MAESTRO CSV into memory and provide search/filter/sort."""
 
 import csv
+import logging
 from collections import defaultdict
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from .models import (
     Track,
     _make_slug,
 )
+
+logger = logging.getLogger("maestro")
 
 
 class DatasetStore:
@@ -64,6 +67,19 @@ class DatasetStore:
             reverse=True,
         )
         self._composer_map = {c.slug: c for c in self.composers}
+
+        # Warn if any two composer names mapped to the same slug (data loss risk)
+        slug_to_names: dict[str, list[str]] = defaultdict(list)
+        for composer_name in self.by_composer:
+            slug_to_names[_make_slug(composer_name)].append(composer_name)
+        for slug, names in slug_to_names.items():
+            if len(names) > 1:
+                logger.warning(
+                    "Slug collision: %d composers share slug '%s': %s",
+                    len(names),
+                    slug,
+                    ", ".join(f'"{n}"' for n in names),
+                )
 
     def get_composer(self, slug: str) -> Composer | None:
         return self._composer_map.get(slug)
