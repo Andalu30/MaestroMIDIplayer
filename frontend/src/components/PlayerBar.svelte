@@ -13,6 +13,7 @@
 	let expanded = $state(false);
 
 	let loadedTrackId = $state<number | null>(null);
+	let loadAbortController: AbortController | null = null;
 
 	// Drag-to-expand/collapse state
 	let dragging = $state(false);
@@ -99,12 +100,17 @@
 	});
 
 	async function loadAndPlay(trackId: number) {
+		// Cancel any in-progress load
+		loadAbortController?.abort();
+		loadAbortController = new AbortController();
+		const { signal } = loadAbortController;
+
 		loading = true;
 		try {
 			loadedTrackId = null; // Prevent auto-advance from the stop() below
 			midiPlayer.stop();
 			if (trackId >= 0) {
-				const dur = await midiPlayer.load(trackId);
+				const dur = await midiPlayer.load(trackId, signal);
 				duration = dur;
 			} else {
 				// Negative ID = already loaded via loadFromBuffer (standalone player)
@@ -115,7 +121,8 @@
 			if (midiPlayer.hasOutputs()) {
 				midiPlayer.play();
 			}
-		} catch (e) {
+		} catch (e: unknown) {
+			if (e instanceof Error && e.name === 'AbortError') return; // cancelled, no error display
 			console.error('Failed to load MIDI:', e);
 		} finally {
 			loading = false;
@@ -322,9 +329,9 @@
 					class="p-1.5 rounded-full hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-400">
 					<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 				</button>
-				<button onclick={togglePlay} aria-label={$playerState === 'playing' ? 'Pause' : 'Play'}
-					class="p-2 rounded-full bg-accent-500 hover:bg-accent-600 text-white
-						   {loading ? 'opacity-50 pointer-events-none' : ''}">
+				<button onclick={loading ? () => { loadAbortController?.abort(); loading = false; } : togglePlay}
+					aria-label={loading ? 'Cancel loading' : $playerState === 'playing' ? 'Pause' : 'Play'}
+					class="p-2 rounded-full bg-accent-500 hover:bg-accent-600 text-white">
 					{#if loading}
 						<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 					{:else if $playerState === 'playing'}
@@ -573,9 +580,9 @@
 						   text-surface-600 dark:text-surface-400 transition-colors">
 					<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 				</button>
-				<button onclick={togglePlay} aria-label={$playerState === 'playing' ? 'Pause' : 'Play'}
-					class="p-4 rounded-full bg-accent-500 hover:bg-accent-600 text-white shadow-lg
-						   {loading ? 'opacity-50 pointer-events-none' : ''} transition-colors">
+				<button onclick={loading ? () => { loadAbortController?.abort(); loading = false; } : togglePlay}
+					aria-label={loading ? 'Cancel loading' : $playerState === 'playing' ? 'Pause' : 'Play'}
+					class="p-4 rounded-full bg-accent-500 hover:bg-accent-600 text-white shadow-lg transition-colors">
 					{#if loading}
 						<div class="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 					{:else if $playerState === 'playing'}

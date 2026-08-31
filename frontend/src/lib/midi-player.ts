@@ -94,9 +94,9 @@ export class MidiPlayer {
 		return this.outputs.length > 0;
 	}
 
-	async load(trackId: number): Promise<number> {
+	async load(trackId: number, signal?: AbortSignal): Promise<number> {
 		const url = midiFileUrl(trackId);
-		const res = await fetch(url);
+		const res = await fetch(url, { signal });
 		if (!res.ok) throw new Error(`Failed to fetch MIDI: ${res.status}`);
 		const buf = await res.arrayBuffer();
 		return this.loadFromBuffer(buf);

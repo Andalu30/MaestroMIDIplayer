@@ -9,6 +9,7 @@
 	let competition = $state<CompetitionYear | null>(null);
 	let loading = $state(true);
 	let expandedRounds = $state<Set<number>>(new Set());
+	let error = $state<string | null>(null);
 
 	const year = $derived(Number(page.params.year));
 	const yearIsValid = $derived(Number.isInteger(year) && year >= 2000 && year <= 2030);
@@ -16,6 +17,7 @@
 	$effect(() => {
 		const currentYear = year; // track dependency
 		loading = true;
+		error = null;
 
 		if (!yearIsValid) {
 			loading = false;
@@ -27,6 +29,9 @@
 			if (competition) {
 				expandedRounds = new Set(competition.rounds.map((_, i) => i));
 			}
+			loading = false;
+		}).catch((e: Error) => {
+			error = e.message.includes('404') ? `No competition found for year ${currentYear}.` : 'Failed to load competition. Please try again.';
 			loading = false;
 		});
 	});
@@ -86,6 +91,10 @@
 {:else if loading}
 	<div class="flex justify-center py-20">
 		<div class="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
+	</div>
+{:else if error}
+	<div class="flex flex-col items-center py-20 text-surface-500 dark:text-surface-400">
+		<p class="text-lg font-medium">{error}</p>
 	</div>
 {:else if competition}
 	<!-- Header -->

@@ -11,6 +11,7 @@
 	let tracks = $state<Track[]>([]);
 	let loading = $state(true);
 	let imgError = $state(false);
+	let error = $state<string | null>(null);
 
 	const slug = $derived(page.params.slug);
 
@@ -18,6 +19,7 @@
 		const currentSlug = slug; // track dependency
 		loading = true;
 		imgError = false;
+		error = null;
 
 		Promise.all([
 			getComposer(currentSlug),
@@ -39,6 +41,9 @@
 					setTimeout(() => el.classList.remove('search-highlight'), 2000);
 				}
 			}
+		}).catch((e: Error) => {
+			error = e.message.includes('404') ? 'Composer not found.' : 'Failed to load composer. Please try again.';
+			loading = false;
 		});
 	});
 
@@ -61,6 +66,10 @@
 {#if loading}
 	<div class="flex justify-center py-20">
 		<div class="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
+	</div>
+{:else if error}
+	<div class="flex flex-col items-center py-20 text-surface-500 dark:text-surface-400">
+		<p class="text-lg font-medium">{error}</p>
 	</div>
 {:else if composer}
 	<!-- Header -->
