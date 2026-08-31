@@ -11,10 +11,16 @@
 	let expandedRounds = $state<Set<number>>(new Set());
 
 	const year = $derived(Number(page.params.year));
+	const yearIsValid = $derived(Number.isInteger(year) && year >= 2000 && year <= 2030);
 
 	$effect(() => {
 		const currentYear = year; // track dependency
 		loading = true;
+
+		if (!yearIsValid) {
+			loading = false;
+			return;
+		}
 
 		getCompetition(currentYear).then((comp) => {
 			competition = comp;
@@ -72,7 +78,12 @@
 	<title>Competition {year} — Maestro</title>
 </svelte:head>
 
-{#if loading}
+{#if !yearIsValid}
+	<div class="flex flex-col items-center py-20 text-surface-500 dark:text-surface-400">
+		<p class="text-lg font-medium">Invalid competition year</p>
+		<p class="text-sm mt-1">"{page.params.year}" is not a valid year.</p>
+	</div>
+{:else if loading}
 	<div class="flex justify-center py-20">
 		<div class="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
 	</div>
@@ -151,4 +162,8 @@
 			{/if}
 		</section>
 	{/each}
-{/if}
+{:else}
+	<div class="flex flex-col items-center py-20 text-surface-500 dark:text-surface-400">
+		<p class="text-lg font-medium">Competition not found</p>
+		<p class="text-sm mt-1">No competition data found for year {year}.</p>
+	</div>
