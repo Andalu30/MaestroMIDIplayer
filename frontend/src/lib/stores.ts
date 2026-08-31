@@ -94,3 +94,26 @@ export const showPedalIndicators = writable<boolean>(true);
 
 /** Whether pedal name labels are shown */
 export const showPedalNames = writable<boolean>(false);
+
+// Simple toast notification store
+export interface Toast {
+	id: number;
+	message: string;
+}
+
+function createToastStore() {
+	const { subscribe, update } = writable<Toast[]>([]);
+	let nextId = 0;
+	return {
+		subscribe,
+		show(message: string, duration = 2500) {
+			const id = ++nextId;
+			update(toasts => [...toasts, { id, message }]);
+			setTimeout(() => {
+				update(toasts => toasts.filter(t => t.id !== id));
+			}, duration);
+		},
+	};
+}
+
+export const toasts = createToastStore();

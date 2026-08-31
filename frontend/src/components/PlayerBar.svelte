@@ -268,7 +268,7 @@
 		<!-- Piano keyboard visualization -->
 		{#if $showPianoViz}
 		<div class="absolute inset-0 flex items-end justify-center pointer-events-none overflow-hidden" aria-hidden="true">
-			<div class="relative" style="width: {keyboardWidth}px; height: 100%">
+			<div class="relative hidden sm:block" style="width: {keyboardWidth}px; height: 100%">
 				{#each pianoKeys.filter(k => !k.isBlack) as key (key.midi)}
 					{@const vel = $activeNotes.get(key.midi)}
 					<div

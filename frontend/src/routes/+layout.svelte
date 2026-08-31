@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { theme } from '$lib/stores';
+	import { theme, playerState, toasts } from '$lib/stores';
 	import { midiPlayer } from '$lib/midi-player';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -22,6 +22,25 @@
 		mobileMenuOpen = false;
 	});
 
+	function handleKeydown(e: KeyboardEvent) {
+		// Ignore shortcuts when typing in an input/textarea
+		const tag = (e.target as HTMLElement)?.tagName;
+		if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+
+		if (e.code === 'Space') {
+			e.preventDefault();
+			const state = $playerState;
+			if (state === 'playing') midiPlayer.pause();
+			else if (state === 'paused' || state === 'stopped') midiPlayer.play();
+		} else if (e.code === 'ArrowRight' && !e.metaKey && !e.ctrlKey) {
+			e.preventDefault();
+			midiPlayer.seek(midiPlayer.getPosition() + 5);
+		} else if (e.code === 'ArrowLeft' && !e.metaKey && !e.ctrlKey) {
+			e.preventDefault();
+			midiPlayer.seek(Math.max(0, midiPlayer.getPosition() - 5));
+		}
+	}
+
 	onMount(async () => {
 		theme.init();
 		// Check if MIDI outputs are available
@@ -33,6 +52,8 @@
 		}
 	});
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="min-h-screen overflow-x-hidden bg-surface-50 dark:bg-surface-950 text-surface-900 dark:text-surface-100 transition-colors">
 	<!-- Top nav -->
@@ -198,4 +219,17 @@
 
 	<!-- Settings -->
 	<SettingsPanel open={settingsOpen} onclose={() => settingsOpen = false} />
+
+	<!-- Toast notifications -->
+	{#if $toasts.length > 0}
+		<div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[200] flex flex-col items-center gap-2 pointer-events-none">
+			{#each $toasts as toast (toast.id)}
+				<div class="px-4 py-2 rounded-full bg-surface-900 dark:bg-surface-100
+							text-surface-100 dark:text-surface-900 text-sm shadow-lg
+							animate-fade-in">
+					{toast.message}
+				</div>
+			{/each}
+		</div>
+	{/if}
 </div>

@@ -294,6 +294,10 @@ export class MidiPlayer {
 		return this.duration;
 	}
 
+	getPosition(): number {
+		return this.currentPosition();
+	}
+
 	currentPosition(): number {
 		if (!this.playing) return this.pausedAt;
 		const elapsed = (performance.now() - this.startTime) / 1000;

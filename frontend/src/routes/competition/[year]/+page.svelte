@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { getCompetition } from '$lib/api';
-	import { currentTrack, queue } from '$lib/stores';
+	import { currentTrack, queue, toasts } from '$lib/stores';
 	import type { CompetitionYear, Track } from '$lib/stores';
 	import { formatTotalDuration } from '$lib/utils';
 	import TrackList from '../../../components/TrackList.svelte';
@@ -51,6 +51,7 @@
 		if (tracks.length > 0) {
 			currentTrack.set(tracks[0]);
 			queue.set(tracks.slice(1));
+			toasts.show(`Queued ${tracks.length} track${tracks.length === 1 ? '' : 's'}`);
 		}
 	}
 
@@ -59,6 +60,7 @@
 		if (tracks.length > 0) {
 			currentTrack.set(tracks[0]);
 			queue.set(tracks.slice(1));
+			toasts.show(`Queued ${tracks.length} track${tracks.length === 1 ? '' : 's'}`);
 		}
 	}
 
@@ -89,8 +91,20 @@
 		<p class="text-sm mt-1">"{page.params.year}" is not a valid year.</p>
 	</div>
 {:else if loading}
-	<div class="flex justify-center py-20">
-		<div class="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
+	<!-- Skeleton screen -->
+	<section class="mb-10 animate-pulse">
+		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div class="space-y-2">
+				<div class="h-9 w-48 bg-surface-200 dark:bg-surface-700 rounded"></div>
+				<div class="h-4 w-64 bg-surface-200 dark:bg-surface-700 rounded"></div>
+			</div>
+			<div class="h-9 w-24 bg-surface-200 dark:bg-surface-700 rounded-full"></div>
+		</div>
+	</section>
+	<div class="space-y-3 animate-pulse">
+		{#each Array(3) as _}
+			<div class="h-12 bg-surface-200 dark:bg-surface-700 rounded-lg"></div>
+		{/each}
 	</div>
 {:else if error}
 	<div class="flex flex-col items-center py-20 text-surface-500 dark:text-surface-400">

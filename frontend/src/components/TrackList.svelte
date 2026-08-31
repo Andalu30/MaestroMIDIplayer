@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Track } from '$lib/stores';
-	import { currentTrack, queue } from '$lib/stores';
+	import { currentTrack, queue, toasts } from '$lib/stores';
 	import { formatDuration } from '$lib/utils';
 
 	interface TrackGroup {
@@ -125,6 +125,13 @@
 		if (sortField !== field) return '';
 		return sortAsc ? ' \u2191' : ' \u2193';
 	}
+
+	function copyTrackLink(track: Track) {
+		const url = `${window.location.origin}/composer/${track.composer_slug}#track-${track.id}`;
+		navigator.clipboard.writeText(url).then(() => {
+			toasts.show('Link copied!');
+		});
+	}
 </script>
 
 <div class="space-y-1">
@@ -205,14 +212,13 @@
 				<!-- Single-performance row -->
 				{@const track = group.tracks[0]}
 				{@const isPlaying = $currentTrack?.id === track.id}
-				<button
+				<div
 					id="track-{track.id}"
-					class="w-full flex items-center gap-4 px-4 py-2.5 rounded-lg text-left
+					class="flex items-center gap-4 px-4 py-2.5 rounded-lg
 						   transition-colors group
 						   {isPlaying
 							? 'bg-accent-500/10 dark:bg-accent-500/15'
 							: 'hover:bg-surface-100 dark:hover:bg-surface-850'}"
-					onclick={() => playTrack(track)}
 				>
 					<span class="w-8 shrink-0 text-sm {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-300 dark:text-surface-600'} flex items-center justify-center">
 						{#if isPlaying}
@@ -221,18 +227,29 @@
 							·
 						{/if}
 					</span>
-					<div class="flex-1 min-w-0">
+					<button class="flex-1 min-w-0 text-left" onclick={() => playTrack(track)}>
 						<p class="text-sm truncate {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-900 dark:text-surface-100'}">
 							{track.title}
 						</p>
 						<p class="text-xs text-surface-500 dark:text-surface-400">
 							{track.year}{#if track.round} · Round {track.round}{/if}
 						</p>
-					</div>
+					</button>
+					<button
+						onclick={(e) => { e.stopPropagation(); copyTrackLink(track); }}
+						aria-label="Copy link to track"
+						class="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity
+							   text-surface-400 hover:text-accent-500"
+					>
+						<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+							<path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+						</svg>
+					</button>
 					<span class="w-16 shrink-0 text-sm text-surface-500 dark:text-surface-400 tabular-nums text-right">
 						{track.duration_formatted}
 					</span>
-				</button>
+				</div>
 			{/if}
 		{/each}
 	{:else}

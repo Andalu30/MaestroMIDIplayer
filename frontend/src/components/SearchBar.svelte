@@ -6,7 +6,11 @@
 
 	let { size = 'sm' }: { size?: 'sm' | 'lg' } = $props();
 
+	// MAESTRO dataset competition years
+	const COMPETITION_YEARS = [2004, 2006, 2008, 2009, 2011, 2014, 2015, 2017, 2018];
+
 	let query = $state('');
+	let selectedYear = $state<number | null>(null);
 	let results = $state<Track[]>([]);
 	let open = $state(false);
 	let searchError = $state(false);
@@ -15,18 +19,18 @@
 	let containerEl: HTMLDivElement;
 	let dropdownStyle = $state('');
 
-	function onInput() {
+	function triggerSearch() {
 		clearTimeout(timer);
 		selectedIndex = -1;
 		searchError = false;
-		if (query.length < 2) {
+		if (query.length < 2 && selectedYear === null) {
 			results = [];
 			open = false;
 			return;
 		}
 		timer = setTimeout(async () => {
 			try {
-				const data = await getTracks({ q: query, limit: 8 });
+				const data = await getTracks({ q: query || undefined, year: selectedYear ?? undefined, limit: 8 });
 				results = data.items;
 				open = results.length > 0 || searchError;
 				selectedIndex = -1;
@@ -42,6 +46,14 @@
 				updateDropdownPosition();
 			}
 		}, 400);
+	}
+
+	function onInput() {
+		triggerSearch();
+	}
+
+	function onYearChange() {
+		if (query.length >= 2 || selectedYear !== null) triggerSearch();
 	}
 
 	function updateDropdownPosition() {
@@ -108,6 +120,19 @@
 			aria-expanded={open}
 			aria-autocomplete="list"
 		/>
+		<select
+			bind:value={selectedYear}
+			onchange={onYearChange}
+			class="bg-transparent border-none outline-none shrink-0 text-xs
+				   text-surface-500 dark:text-surface-400 cursor-pointer
+				   {size === 'lg' ? 'text-sm' : 'text-xs'}"
+			aria-label="Filter by year"
+		>
+			<option value={null}>All years</option>
+			{#each COMPETITION_YEARS as yr}
+				<option value={yr}>{yr}</option>
+			{/each}
+		</select>
 	</div>
 
 	{#if open}
