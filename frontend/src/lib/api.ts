@@ -8,6 +8,13 @@ async function fetchJson<T>(path: string): Promise<T> {
 	return res.json();
 }
 
+export interface PaginatedTracks {
+	total: number;
+	skip: number;
+	limit: number;
+	items: Track[];
+}
+
 export async function getComposers(): Promise<Composer[]> {
 	return fetchJson('/composers');
 }
@@ -26,13 +33,17 @@ export async function getTracks(params?: {
 	year?: number;
 	sort?: string;
 	order?: string;
-}): Promise<Track[]> {
+	skip?: number;
+	limit?: number;
+}): Promise<PaginatedTracks> {
 	const searchParams = new URLSearchParams();
 	if (params?.q) searchParams.set('q', params.q);
 	if (params?.composer) searchParams.set('composer', params.composer);
 	if (params?.year) searchParams.set('year', String(params.year));
 	if (params?.sort) searchParams.set('sort', params.sort);
 	if (params?.order) searchParams.set('order', params.order);
+	if (params?.skip != null) searchParams.set('skip', String(params.skip));
+	if (params?.limit != null) searchParams.set('limit', String(params.limit));
 	const qs = searchParams.toString();
 	return fetchJson(`/tracks${qs ? '?' + qs : ''}`);
 }

@@ -41,11 +41,13 @@
 	let groups = $derived.by(() => {
 		const map = new Map<string, Track[]>();
 		for (const track of tracks) {
-			const existing = map.get(track.title);
+			// Normalize title: collapse whitespace so "Nocturne  Op. 9" and "Nocturne Op. 9" group together
+			const normalizedTitle = track.title.replace(/\s+/g, ' ').trim();
+			const existing = map.get(normalizedTitle);
 			if (existing) {
 				existing.push(track);
 			} else {
-				map.set(track.title, [track]);
+				map.set(normalizedTitle, [track]);
 			}
 		}
 

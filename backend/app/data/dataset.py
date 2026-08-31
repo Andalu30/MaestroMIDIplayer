@@ -10,6 +10,7 @@ from .models import (
     CompetitionSession,
     CompetitionYear,
     Composer,
+    PaginatedTracks,
     Track,
     _make_slug,
 )
@@ -80,7 +81,9 @@ class DatasetStore:
         year: int | None = None,
         sort: str = "composer",
         order: str = "asc",
-    ) -> list[Track]:
+        skip: int = 0,
+        limit: int = 100,
+    ) -> PaginatedTracks:
         results = self.tracks
 
         if composer:
@@ -109,7 +112,8 @@ class DatasetStore:
         key_fn = sort_keys.get(sort, sort_keys["composer"])
         results = sorted(results, key=key_fn, reverse=(order == "desc"))
 
-        return results
+        total = len(results)
+        return PaginatedTracks(total=total, skip=skip, limit=limit, items=results[skip : skip + limit])
 
     def get_competition(self, year: int) -> CompetitionYear | None:
         tracks = self.by_year.get(year)

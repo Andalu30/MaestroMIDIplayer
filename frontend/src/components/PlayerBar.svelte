@@ -276,7 +276,7 @@
 							   {vel !== undefined
 								? 'bg-surface-400/60 dark:bg-surface-400/40'
 								: 'bg-surface-200/20 dark:bg-surface-700/15'}"
-						style="left: {key.left}px; width: {KEY_W - 1}px; height: {vel !== undefined ? 12 + (vel / 127) * 16 : 12}px"
+						style="left: {key.left}px; width: {KEY_W - 1}px; height: {vel !== undefined ? 12 + (vel / 127) * 16 : 12}px; will-change: background-color, height"
 					></div>
 				{/each}
 				{#each pianoKeys.filter(k => k.isBlack) as key (key.midi)}
@@ -286,7 +286,7 @@
 							   {vel !== undefined
 								? 'bg-surface-500/70 dark:bg-surface-300/50'
 								: 'bg-surface-300/20 dark:bg-surface-600/15'}"
-						style="left: {key.left}px; width: {BLACK_W}px; height: {vel !== undefined ? 8 + (vel / 127) * 12 : 8}px"
+						style="left: {key.left}px; width: {BLACK_W}px; height: {vel !== undefined ? 8 + (vel / 127) * 12 : 8}px; will-change: background-color, height"
 					></div>
 				{/each}
 			</div>
@@ -484,7 +484,7 @@
 								   {vel !== undefined
 									? 'bg-accent-400 dark:bg-accent-500 border-accent-500 dark:border-accent-600'
 									: 'bg-white dark:bg-surface-200 border-surface-300 dark:border-surface-400'}"
-							style="left: {key.leftPct}%; width: calc({key.widthPct}% - 1px)"
+							style="left: {key.leftPct}%; width: calc({key.widthPct}% - 1px); will-change: background-color"
 						></div>
 					{/each}
 					<!-- Black keys -->
@@ -495,7 +495,7 @@
 								   {vel !== undefined
 									? 'bg-accent-600 dark:bg-accent-400'
 									: 'bg-surface-900 dark:bg-surface-950'}"
-							style="left: {key.leftPct}%; width: {key.widthPct}%; height: 62%"
+							style="left: {key.leftPct}%; width: {key.widthPct}%; height: 62%; will-change: background-color"
 						></div>
 					{/each}
 				</div>

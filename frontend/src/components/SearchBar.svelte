@@ -26,8 +26,8 @@
 		}
 		timer = setTimeout(async () => {
 			try {
-				results = await getTracks({ q: query });
-				results = results.slice(0, 8);
+				const data = await getTracks({ q: query, limit: 8 });
+				results = data.items;
 				open = results.length > 0 || searchError;
 				selectedIndex = -1;
 				if (open) {

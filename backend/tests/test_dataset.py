@@ -37,27 +37,27 @@ class TestSearch:
 
     def test_search_by_query(self):
         results = self.store.search(q="chopin")
-        assert len(results) > 0
-        assert all("Chopin" in t.composer for t in results)
+        assert len(results.items) > 0
+        assert all("Chopin" in t.composer for t in results.items)
 
     def test_search_by_title(self):
         results = self.store.search(q="nocturne")
-        assert len(results) > 0
-        assert all("nocturne" in t.title.lower() for t in results)
+        assert len(results.items) > 0
+        assert all("nocturne" in t.title.lower() for t in results.items)
 
     def test_filter_by_year(self):
         results = self.store.search(year=2018)
-        assert len(results) == 2
-        assert all(t.year == 2018 for t in results)
+        assert results.total == 2
+        assert all(t.year == 2018 for t in results.items)
 
     def test_filter_by_composer_slug(self):
         results = self.store.search(composer="frederic-chopin")
-        assert len(results) > 0
-        assert all(t.composer == "Frédéric Chopin" for t in results)
+        assert len(results.items) > 0
+        assert all(t.composer == "Frédéric Chopin" for t in results.items)
 
     def test_sort_by_duration_desc(self):
         results = self.store.search(sort="duration", order="desc")
-        durations = [t.duration for t in results]
+        durations = [t.duration for t in results.items]
         assert durations == sorted(durations, reverse=True)
 
 

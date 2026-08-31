@@ -32,16 +32,16 @@ async def get_composer_image(request: Request, slug: str):
     # Try cache first (fast path, no async needed)
     cached = get_cached_image(slug)
     if cached:
-        return FileResponse(cached, media_type="image/jpeg")
+        return FileResponse(cached, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
 
     # Try fetching from Wikipedia
     path = await fetch_composer_image(slug, composer.name)
     if path:
-        return FileResponse(path, media_type="image/jpeg")
+        return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
 
     # Fallback: SVG placeholder with initials
     svg = generate_placeholder_svg(composer.name)
-    return Response(content=svg, media_type="image/svg+xml")
+    return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=3600"})
 
 
 @router.get("/{slug}/tracks")
