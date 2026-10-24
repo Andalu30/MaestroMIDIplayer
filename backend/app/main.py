@@ -5,7 +5,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -198,15 +198,25 @@ def health(request: Request):
     }
 
 
+def mount_frontend(app: FastAPI, frontend_dir: Path) -> None:
+    """Serve the built SPA: real files from frontend_dir, index.html for client routes."""
+    frontend_dir = frontend_dir.resolve()
+    app.mount("/_app", StaticFiles(directory=frontend_dir / "_app"), name="frontend-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Unknown API paths are real 404s, not the SPA shell
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        # resolve() collapses ../ (also when sent percent-encoded); anything that
+        # escapes the build directory gets the SPA shell, never the file
+        file_path = (frontend_dir / full_path).resolve()
+        if file_path.is_relative_to(frontend_dir) and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(frontend_dir / "index.html")
+
+
 # Serve frontend static files in production
 _frontend_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "build"
 if _frontend_dir.is_dir():
-    app.mount("/_app", StaticFiles(directory=_frontend_dir / "_app"), name="frontend-assets")
-
-    @app.get("/{full_path:path}")
-    async def serve_spa(request: Request, full_path: str):
-        """Serve static files or fall back to index.html for SPA routing."""
-        file_path = _frontend_dir / full_path
-        if file_path.is_file():
-            return FileResponse(file_path)
-        return FileResponse(_frontend_dir / "index.html")
+    mount_frontend(app, _frontend_dir)
