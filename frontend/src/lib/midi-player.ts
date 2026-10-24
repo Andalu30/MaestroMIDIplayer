@@ -38,9 +38,10 @@ export class MidiPlayer {
 	private playing = false;
 	private startTime = 0;        // performance.now() when playback started
 	private pausedAt = 0;         // elapsed seconds (original tempo) when paused
-	private nextEventIndex = 0;
-	private sentUpTo = 0;         // index of the first scheduled event not yet sent
-	private scheduledTimers: number[] = [];
+	private nextEventIndex = 0;   // next event not yet handed to the MIDI output
+	// Events already sent with a future timestamp (Web MIDI can't reliably unsend them)
+	private pending: { at: number; event: MidiEvent }[] = [];
+	private clock: { start(): void; stop(): void } | null = null;
 	private positionTimer = 0;
 
 	private onStateChange: StateChangeCallback | null = null;
@@ -303,21 +304,12 @@ export class MidiPlayer {
 
 	setTempo(tempo: number) {
 		const pos = this.playing ? this.currentPosition() : this.pausedAt;
-		const wasPlaying = this.playing;
-
-		if (wasPlaying) {
-			// Resume from the first event that hasn't been sent yet: cancelled timers
-			// would otherwise drop up to the look-ahead window (incl. note-offs → stuck keys)
-			this.clearScheduled();
-			this.nextEventIndex = this.sentUpTo;
-		}
-
 		this.tempo = Math.max(0.25, Math.min(2.0, tempo));
 		this.pausedAt = pos;
-
-		if (wasPlaying) {
-			this.startTime = performance.now() - (this.pausedAt * 1000 / this.tempo);
-			this.startScheduling();
+		// Events already sent (≤ one look-ahead window) play out at the old tempo;
+		// everything from nextEventIndex on is timed against the new startTime
+		if (this.playing) {
+			this.startTime = performance.now() - (pos * 1000 / this.tempo);
 		}
 	}
 
@@ -355,67 +347,73 @@ export class MidiPlayer {
 	// --- Private ---
 
 	private startScheduling() {
-		this.sentUpTo = this.nextEventIndex;
-		this.scheduleEvents();
+		this.pump();
+		this.getClock().start();
 	}
 
-	private scheduleEvents() {
-		// Look-ahead window: 3s is enough to survive background-tab throttling
-		// (timers fire at ~1fps), while keeping the buffer small enough that
-		// clearTimeout reliably cancels everything on stop/seek/change-piece.
-		const SCHEDULE_AHEAD_MS = 3000;
-		const now = performance.now();
-
-		for (let i = this.nextEventIndex; i < this.events.length; i++) {
-			const event = this.events[i];
-			const eventRealTime = this.startTime + (event.time / this.tempo * 1000);
-			const aheadMs = eventRealTime - now;
-
-			if (aheadMs > SCHEDULE_AHEAD_MS) {
-				// Re-schedule at half the look-ahead so we refill before running dry
-				this.nextEventIndex = i;
-				const timer = window.setTimeout(() => {
-					if (this.playing) this.scheduleEvents();
-				}, SCHEDULE_AHEAD_MS / 2);
-				this.scheduledTimers.push(timer);
-				return;
+	// Ticks come from a Web Worker: page timers in hidden tabs are throttled to
+	// ~1/min by Chrome after 5 minutes, worker timers are not.
+	private getClock() {
+		if (!this.clock) {
+			const tick = () => this.pump();
+			try {
+				const src = 'let t=0;onmessage=e=>{clearInterval(t);if(e.data==="start")t=setInterval(()=>postMessage(0),25)}';
+				const worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+				worker.onmessage = tick;
+				this.clock = { start: () => worker.postMessage('start'), stop: () => worker.postMessage('stop') };
+			} catch {
+				let timer = 0; // no Worker support: main-thread fallback
+				this.clock = {
+					start: () => { window.clearInterval(timer); timer = window.setInterval(tick, 25); },
+					stop: () => window.clearInterval(timer),
+				};
 			}
+		}
+		return this.clock;
+	}
 
-			// Events in the past (background tab catch-up) fire immediately
-			// rather than being skipped — a burst of notes is better than dropped notes
-			const delay = Math.max(0, aheadMs);
-			const timer = window.setTimeout(() => {
-				if (!this.playing) return;
-				this.sentUpTo = i + 1;
-				this.sendMidiNow(event);
-				this.updateVisualization(event);
-			}, delay);
-			this.scheduledTimers.push(timer);
+	/** Send everything due within the look-ahead window, timestamped for exact timing. */
+	private pump() {
+		if (!this.playing) return;
+		const now = performance.now();
+		// Short window so pause/seek feel instant; longer when hidden to absorb
+		// late worker messages on a backgrounded main thread
+		const horizon = now + (document.hidden ? 1000 : 150);
+
+		while (this.nextEventIndex < this.events.length) {
+			const event = this.events[this.nextEventIndex];
+			const at = this.startTime + (event.time / this.tempo) * 1000;
+			if (at > horizon) break;
+			this.sendMidi(event, Math.max(at, now));
+			this.pending.push({ at, event });
+			this.nextEventIndex++;
 		}
 
-		// All events in the track have been scheduled — detect end of playback
-		this.nextEventIndex = this.events.length;
-		const lastEvent = this.events[this.events.length - 1];
-		if (lastEvent) {
-			const lastRealTime = this.startTime + (lastEvent.time / this.tempo * 1000);
-			const remainingMs = lastRealTime - now + 300;
-			const timer = window.setTimeout(() => {
-				if (this.playing) {
-					this.allNotesOff(); // release anything still held (e.g. sustain pedal)
-					this.playing = false;
-					this.pausedAt = 0;
-					this.nextEventIndex = 0;
-					this.stopPositionUpdates();
-					this.stopNotesFlush();
-					this.clearActiveNotes();
-					this.emitState('stopped');
-				}
-			}, Math.max(0, remainingMs));
-			this.scheduledTimers.push(timer);
+		// Visualization follows what is actually sounding now
+		while (this.pending.length && this.pending[0].at <= now) {
+			this.updateVisualization(this.pending.shift()!.event);
+		}
+
+		const last = this.events[this.events.length - 1];
+		if (this.nextEventIndex >= this.events.length && (!last || now >= this.startTime + (last.time / this.tempo) * 1000 + 300)) {
+			this.finish();
 		}
 	}
 
-	private sendMidiNow(event: MidiEvent) {
+	private finish() {
+		this.getClock().stop();
+		this.pending = [];
+		this.allNotesOff(); // release anything still held (e.g. sustain pedal)
+		this.playing = false;
+		this.pausedAt = 0;
+		this.nextEventIndex = 0;
+		this.stopPositionUpdates();
+		this.stopNotesFlush();
+		this.clearActiveNotes();
+		this.emitState('stopped');
+	}
+
+	private sendMidi(event: MidiEvent, timestamp?: number) {
 		if (this.outputs.length === 0) return;
 		const status = (() => {
 			switch (event.type) {
@@ -425,7 +423,7 @@ export class MidiPlayer {
 			}
 		})();
 		for (const out of this.outputs) {
-			out.send([status, event.data1, event.data2]);
+			out.send([status, event.data1, event.data2], timestamp);
 		}
 	}
 
@@ -476,11 +474,24 @@ export class MidiPlayer {
 		}
 	}
 
+	/**
+	 * Stop the clock and neutralise events already queued in the output with a
+	 * future timestamp: each queued note-on / pedal-down gets a matching release
+	 * right after it, so nothing is left sounding after pause/seek/stop.
+	 */
 	private clearScheduled() {
-		for (const t of this.scheduledTimers) {
-			window.clearTimeout(t);
+		this.clock?.stop();
+		const now = performance.now();
+		for (const out of this.outputs) {
+			(out as MIDIOutput & { clear?: () => void }).clear?.();
+			for (const { at, event } of this.pending) {
+				if (at <= now) continue;
+				const ch = event.channel & 0x0f;
+				if (event.type === 'noteOn' && event.data2 > 0) out.send([0x80 | ch, event.data1, 0], at + 1);
+				else if (event.type === 'cc' && [64, 66, 67].includes(event.data1) && event.data2 > 0) out.send([0xB0 | ch, event.data1, 0], at + 1);
+			}
 		}
-		this.scheduledTimers = [];
+		this.pending = [];
 	}
 
 	private startPositionUpdates() {
