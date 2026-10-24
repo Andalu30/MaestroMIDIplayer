@@ -2,6 +2,7 @@
 	import { currentTrack, playerState, queue, activeNotes, pedalState, showPianoViz, showPedalIndicators, showPedalNames } from '#lib/stores.js';
 	import { midiPlayer } from '#lib/midi-player.js';
 	import { formatDuration } from '#lib/utils.js';
+	import { playNext, playPrevious } from '#lib/playback.js';
 	import { onMount, onDestroy } from 'svelte';
 
 	let position = $state(0);
@@ -58,14 +59,7 @@
 
 		// Auto-advance to next track when playback ends
 		if (update.state === 'stopped' && loadedTrackId !== null) {
-			queue.update(q => {
-				if (q.length > 0) {
-					const [next, ...rest] = q;
-					currentTrack.set(next);
-					return rest;
-				}
-				return q;
-			});
+			playNext();
 		}
 	}
 
@@ -75,11 +69,8 @@
 		if (!navigator.requestMIDIAccess) {
 			midiSupported = false;
 		} else if (!midiPlayer.hasOutputs()) {
-			// Auto-select all MIDI outputs on startup
-			const outputs = await midiPlayer.getMidiOutputs();
-			if (outputs.length > 0) {
-				midiPlayer.setOutputs(outputs);
-			}
+			// The output picked in Settings last time, else all of them
+			await midiPlayer.autoSelectOutputs();
 		}
 	});
 
@@ -153,20 +144,11 @@
 	}
 
 	function nextTrack() {
-		queue.update(q => {
-			if (q.length > 0) {
-				const [next, ...rest] = q;
-				currentTrack.set(next);
-				return rest;
-			}
-			return q;
-		});
+		playNext();
 	}
 
 	function prevTrack() {
-		if (position > 3) {
-			midiPlayer.seek(0);
-		}
+		playPrevious();
 	}
 
 	function onSeek(e: Event) {

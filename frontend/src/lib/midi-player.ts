@@ -101,10 +101,43 @@ export class MidiPlayer {
 		const available = Array.from(this.midiAccess.outputs.values()).filter((o) => o.state === 'connected');
 		if (port.state === 'disconnected') {
 			this.outputs = this.outputs.filter((o) => o.id !== port.id);
-		} else if (this.outputs.length === 0) {
-			this.outputs = available; // same default as startup: all outputs
+		} else if (this.outputs.length === 0 || (port.name && port.name === this.getPreferredOutput())) {
+			// e.g. the preferred piano came back: switch to it from the all-outputs fallback
+			this.outputs = this.pickOutputs(available);
 		}
 		for (const listener of this.outputListeners) listener(available);
+	}
+
+	/** Name of the output chosen in Settings, or null for "all outputs". Remembered across visits. */
+	getPreferredOutput(): string | null {
+		try {
+			return localStorage.getItem('midiOutput');
+		} catch {
+			return null;
+		}
+	}
+
+	setPreferredOutput(name: string | null) {
+		try {
+			if (name) localStorage.setItem('midiOutput', name);
+			else localStorage.removeItem('midiOutput');
+		} catch {
+			// not remembered; the current selection still applies
+		}
+	}
+
+	/** The preferred output if it's connected, otherwise all of them. */
+	pickOutputs(available: MIDIOutput[]): MIDIOutput[] {
+		const preferred = this.getPreferredOutput();
+		const match = preferred ? available.filter((o) => o.name === preferred) : [];
+		return match.length > 0 ? match.slice(0, 1) : available;
+	}
+
+	/** Select outputs per the saved preference (used at startup and on Refresh). */
+	async autoSelectOutputs(): Promise<MIDIOutput[]> {
+		const available = await this.getMidiOutputs();
+		this.outputs = this.pickOutputs(available);
+		return available;
 	}
 
 	setOutput(output: MIDIOutput | null) {

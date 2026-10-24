@@ -6,17 +6,28 @@
 	import ComposerCard from '../components/ComposerCard.svelte';
 	import CompetitionCard from '../components/CompetitionCard.svelte';
 	import SearchBar from '../components/SearchBar.svelte';
+	import LoadError from '../components/LoadError.svelte';
 
 	let composers = $state<Composer[]>([]);
 	let competitions = $state<CompetitionSummary[]>([]);
 	let loading = $state(true);
+	let failed = $state(false);
 
-	onMount(async () => {
-		const [c, comp] = await Promise.all([getComposers(), getCompetitions()]);
-		composers = c;
-		competitions = comp;
-		loading = false;
-	});
+	async function load() {
+		loading = true;
+		failed = false;
+		try {
+			const [c, comp] = await Promise.all([getComposers(), getCompetitions()]);
+			composers = c;
+			competitions = comp;
+		} catch {
+			failed = true;
+		} finally {
+			loading = false;
+		}
+	}
+
+	onMount(load);
 </script>
 
 <svelte:head>
@@ -33,7 +44,7 @@
 		<p class="text-base sm:text-lg text-surface-500 dark:text-surface-400 max-w-xl mx-auto">
 			1,276 piano masterworks from the <br class="hidden sm:inline">International Piano-e-Competition
 		</p>
-		{#if !loading}
+		{#if !loading && !failed}
 			<div class="flex items-center justify-center gap-6 mt-4 text-sm text-surface-400">
 				<span>{composers.length} composers</span>
 				<span class="w-1 h-1 rounded-full bg-surface-300 dark:bg-surface-600"></span>
@@ -50,6 +61,8 @@
 	<div class="flex justify-center py-20">
 		<div class="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
 	</div>
+{:else if failed}
+	<LoadError onretry={load} />
 {:else}
 	<!-- Composers -->
 	<section class="mb-14">

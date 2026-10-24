@@ -24,28 +24,20 @@
 	async function refreshClientPorts() {
 		refreshing = true;
 		clientOutputs = await midiPlayer.getMidiOutputs();
-		const currentOutputs = midiPlayer.getOutputs();
-		if (currentOutputs.length > 1) {
-			clientSelectedId = '__all__';
-		} else if (currentOutputs.length === 1) {
-			const current = currentOutputs[0];
-			if (clientOutputs.find(o => o.id === current.id)) {
-				clientSelectedId = current.id;
-			}
-		}
-		// Auto-select all outputs if nothing is selected yet
-		if (clientOutputs.length > 0 && !midiPlayer.hasOutputs()) {
-			selectClientPort('__all__');
-		}
+		if (!midiPlayer.hasOutputs()) midiPlayer.setOutputs(midiPlayer.pickOutputs(clientOutputs));
+		const current = midiPlayer.getOutputs();
+		clientSelectedId = current.length === 1 ? current[0].id : '__all__';
 		refreshing = false;
 	}
 
 	function selectClientPort(id: string) {
 		clientSelectedId = id;
 		if (id === '__all__') {
+			midiPlayer.setPreferredOutput(null);
 			midiPlayer.setOutputs(clientOutputs);
 		} else {
 			const port = clientOutputs.find(o => o.id === id);
+			midiPlayer.setPreferredOutput(port?.name ?? null);
 			midiPlayer.setOutput(port ?? null);
 		}
 	}
