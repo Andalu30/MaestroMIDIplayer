@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { resolve } from '$app/paths';
 	import type { Track } from '#lib/stores.js';
 	import { currentTrack, queue, toasts } from '#lib/stores.js';
 	import { formatDuration, pieceKey } from '#lib/utils.js';
@@ -138,7 +139,7 @@
 	}
 
 	function copyTrackLink(track: Track) {
-		const url = `${window.location.origin}/composer/${track.composer_slug}#track-${track.id}`;
+		const url = `${window.location.origin}${resolve('/composer/[slug]', { slug: track.composer_slug })}#track-${track.id}`;
 		// navigator.clipboard only exists in secure contexts (HTTPS/localhost);
 		// plain-HTTP LAN deployments fall back to the legacy execCommand path.
 		const copy = navigator.clipboard

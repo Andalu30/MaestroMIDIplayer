@@ -4,6 +4,8 @@ WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# Placeholder base path, rewritten at container start from MAESTRO_BASE_PATH
+ENV MAESTRO_BUILD_BASE=/__MAESTRO_BASE__
 RUN npm run build
 
 # Stage 2: Python backend + serve frontend

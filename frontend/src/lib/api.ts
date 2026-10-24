@@ -1,6 +1,8 @@
 import type { Track, Composer, CompetitionSummary, CompetitionYear } from './stores';
+import { resolve } from '$app/paths';
 
-const BASE = '/api';
+// API lives under the app's base path (e.g. /midi/api when served from a subfolder)
+const BASE = `${resolve('/').replace(/\/$/, '')}/api`;
 
 async function fetchJson<T>(path: string): Promise<T> {
 	const res = await fetch(`${BASE}${path}`);

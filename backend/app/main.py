@@ -19,6 +19,7 @@ from .services.composer_images import close_http_client, fetch_composer_image
 from .services.dataset_bootstrap import ensure_dataset_available
 from .data.dataset import store
 from .core.limiter import limiter
+from .core.base_path import BasePathMiddleware, prepare_frontend
 from .routers import composers, competitions, midi, tracks
 
 logger = logging.getLogger("maestro")
@@ -219,4 +220,7 @@ def mount_frontend(app: FastAPI, frontend_dir: Path) -> None:
 # Serve frontend static files in production
 _frontend_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "build"
 if _frontend_dir.is_dir():
-    mount_frontend(app, _frontend_dir)
+    mount_frontend(app, prepare_frontend(_frontend_dir, settings.base_path))
+
+# Outermost: everything below sees paths without the subfolder prefix
+app.add_middleware(BasePathMiddleware, base_path=settings.base_path)

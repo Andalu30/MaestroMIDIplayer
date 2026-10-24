@@ -104,6 +104,32 @@ uv sync
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+### Behind a reverse proxy, at the root or in a subfolder
+
+The same image can be served at the root (`https://midi.example.com/`) or under a subfolder (`https://example.com/midi/`). For a subfolder, set `MAESTRO_BASE_PATH=/midi`. The app accepts requests **with or without** the prefix, so it works whether your proxy strips it or forwards it unchanged:
+
+```yaml
+# Traefik (labels): with or without the stripprefix middleware
+- traefik.http.routers.midi.rule=PathPrefix(`/midi`)
+- traefik.http.routers.midi.middlewares=midi-strip
+- traefik.http.middlewares.midi-strip.stripprefix.prefixes=/midi
+```
+
+```nginx
+location /midi/ { proxy_pass http://maestro:8000; }    # forwards /midi/...
+# location /midi/ { proxy_pass http://maestro:8000/; } # strips /midi, also fine
+```
+
+```caddy
+handle /midi* { reverse_proxy maestro:8000 }            # or handle_path (strips)
+```
+
+On OpenShift, set `path: /midi` on the Route; it forwards the prefix.
+
+**Client IPs and rate limiting.** The API is rate-limited per client IP (120 req/min). Uvicorn only trusts `X-Forwarded-For` from `127.0.0.1`. Behind a proxy on another host, container or pod, all users therefore share the proxy's single bucket. Set `FORWARDED_ALLOW_IPS` to your proxy's address (e.g. `10.0.0.5` or `172.18.0.0/16`), or to `*` when the container is only reachable through the proxy (the Kubernetes/OpenShift manifests do this). Don't use `*` if the port is also exposed directly, because clients could then spoof their IP.
+
+Without Docker, build the frontend with `MAESTRO_BUILD_BASE=/__MAESTRO_BASE__ npm run build` to make the base path configurable at runtime, or with `MAESTRO_BUILD_BASE=/midi` to fix it at build time.
+
 ## Configuration
 
 All settings use the `MAESTRO_` prefix and can be set as environment variables:
@@ -119,6 +145,8 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 | `MAESTRO_PORT` | `8000` | Server port |
 | `MAESTRO_ENV` | `development` | Set to `production` to disable the API docs UI |
 | `MAESTRO_CORS_ORIGINS` | `["https://midi.andalu30.me","http://localhost:8000"]` | JSON list of allowed origins (only needed for cross-origin API use; the bundled SPA is same-origin) |
+| `MAESTRO_BASE_PATH` | _(empty)_ | Serve from a subfolder, e.g. `/midi` (see [reverse proxy](#behind-a-reverse-proxy-at-the-root-or-in-a-subfolder)) |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Proxies whose `X-Forwarded-For` is trusted for client IPs (read by uvicorn; no `MAESTRO_` prefix) |
 
 ## API
 

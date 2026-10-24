@@ -2,6 +2,7 @@
 	import { getTracks, getCompetitions } from '#lib/api.js';
 	import type { Track } from '#lib/stores.js';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 
 	let { size = 'sm' }: { size?: 'sm' | 'lg' } = $props();
@@ -75,7 +76,7 @@
 		query = '';
 		results = [];
 		selectedIndex = -1;
-		goto(`/composer/${track.composer_slug}#track-${track.id}`);
+		goto(`${resolve('/composer/[slug]', { slug: track.composer_slug })}#track-${track.id}`);
 	}
 
 	function onKeydown(e: KeyboardEvent) {

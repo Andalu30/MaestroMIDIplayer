@@ -95,6 +95,8 @@ frontend/src/
 | `MAESTRO_ENV` | `development` | `production` (disables `/docs`, `/redoc`, `/openapi.json`) |
 | `MAESTRO_CORS_ORIGINS` | `["https://midi.andalu30.me","http://localhost:8000"]` | `["https://midi.example.com"]` |
 | `MAESTRO_UID` / `MAESTRO_GID` | None | `1000` (Docker permission switching) |
+| `MAESTRO_BASE_PATH` | `""` | `/midi`: subfolder hosting; works with prefix-stripping and prefix-keeping proxies (`app/core/base_path.py`) |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | `*` behind a k8s/OpenShift router (uvicorn setting, no prefix) |
 
 ### Frontend Config
 
@@ -102,6 +104,7 @@ frontend/src/
 - **Tailwind**: Configured via `@tailwindcss/vite` plugin
 - **TypeScript**: Strict mode, `moduleResolution: "bundler"`
 - **SvelteKit adapter**: Static, SPA fallback to `index.html` — configured in `vite.config.ts` (SvelteKit 3 has no `svelte.config.js`)
+- **Links/URLs**: never hard-code `/…`; use `resolve('/route')` from `$app/paths` (the app may run under a base path). The API client derives its prefix from `resolve('/')`; compare routes with `page.route.id`, not `page.url.pathname`
 - **Imports**: use the `#lib/…` subpath alias with a `.js` extension (e.g. `#lib/api.js`); `$lib` no longer exists in SvelteKit 3
 
 ## API Reference

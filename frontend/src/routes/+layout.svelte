@@ -3,6 +3,7 @@
 	import { theme, playerState, toasts, currentTrack } from '#lib/stores.js';
 	import { midiPlayer } from '#lib/midi-player.js';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import ThemeToggle from '../components/ThemeToggle.svelte';
 	import SearchBar from '../components/SearchBar.svelte';
@@ -14,7 +15,7 @@
 	let mobileMenuOpen = $state(false);
 	let hasMidiOutputs = $state(true); // assume true until checked
 
-	let isHome = $derived(page.url.pathname === '/');
+	let isHome = $derived(page.route.id === '/');
 
 	// Close mobile menu on navigation
 	$effect(() => {
@@ -62,33 +63,33 @@
 	<header class="sticky top-0 z-40 bg-surface-50/90 dark:bg-surface-950/90 backdrop-blur-sm
 					border-b border-surface-200 dark:border-surface-800">
 		<nav class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-			<a href="/" class="flex items-center gap-2 shrink-0">
+			<a href={resolve('/')} class="flex items-center gap-2 shrink-0">
 				<span class="text-xl font-bold tracking-wider text-accent-500">MMp</span>
 			</a>
 
 			<!-- Desktop nav links -->
 			<div class="hidden md:flex items-center gap-1 ml-1">
-				<a href="/"
+				<a href={resolve('/')}
 					class="px-3 py-1.5 rounded-lg text-sm transition-colors
-						   {page.url.pathname === '/'
+						   {page.route.id === '/'
 							? 'text-accent-500 font-medium'
 							: 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100'}"
 				>Home</a>
-				<a href="/player"
+				<a href={resolve('/player')}
 					class="px-3 py-1.5 rounded-lg text-sm transition-colors
-						   {page.url.pathname === '/player'
+						   {page.route.id === '/player'
 							? 'text-accent-500 font-medium'
 							: 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100'}"
 				>Standalone Player</a>
-				<a href="/about"
+				<a href={resolve('/about')}
 					class="px-3 py-1.5 rounded-lg text-sm transition-colors
-						   {page.url.pathname === '/about'
+						   {page.route.id === '/about'
 							? 'text-accent-500 font-medium'
 							: 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100'}"
 				>About</a>
-				<a href="/docs"
+				<a href={resolve('/docs')}
 					class="px-3 py-1.5 rounded-lg text-sm transition-colors
-						   {page.url.pathname === '/docs'
+						   {page.route.id === '/docs'
 							? 'text-accent-500 font-medium'
 							: 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100'}"
 				>Technical Documentation</a>
@@ -150,27 +151,27 @@
 							<SearchBar />
 						</div>
 					{/if}
-					<a href="/"
+					<a href={resolve('/')}
 						class="px-3 py-2 rounded-lg text-sm transition-colors
-							   {page.url.pathname === '/'
+							   {page.route.id === '/'
 								? 'text-accent-500 font-medium bg-accent-500/10'
 								: 'text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'}"
 					>Home</a>
-					<a href="/player"
+					<a href={resolve('/player')}
 						class="px-3 py-2 rounded-lg text-sm transition-colors
-							   {page.url.pathname === '/player'
+							   {page.route.id === '/player'
 								? 'text-accent-500 font-medium bg-accent-500/10'
 								: 'text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'}"
 					>Standalone Player</a>
-					<a href="/about"
+					<a href={resolve('/about')}
 						class="px-3 py-2 rounded-lg text-sm transition-colors
-							   {page.url.pathname === '/about'
+							   {page.route.id === '/about'
 								? 'text-accent-500 font-medium bg-accent-500/10'
 								: 'text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'}"
 					>About</a>
-					<a href="/docs"
+					<a href={resolve('/docs')}
 						class="px-3 py-2 rounded-lg text-sm transition-colors
-							   {page.url.pathname === '/docs'
+							   {page.route.id === '/docs'
 								? 'text-accent-500 font-medium bg-accent-500/10'
 								: 'text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'}"
 					>Technical Documentation</a>
@@ -189,7 +190,7 @@
 		<div class="max-w-6xl mx-auto px-4 py-6 flex flex-col items-center gap-4 text-xs text-surface-400">
 			<div class="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
 				<span>MaestroMIDIplayer</span>
-				<span>This app is entirely vibecoded, check out the <a class="text-accent-500 transition-colors" href="/about#how-it-was-made">About page</a> for more info.</span>
+				<span>This app is entirely vibecoded, check out the <a class="text-accent-500 transition-colors" href="{resolve('/about')}#how-it-was-made">About page</a> for more info.</span>
 				<span><a href="https://magenta.tensorflow.org/datasets/maestro" target="_blank" rel="noopener" class="hover:text-accent-500 transition-colors">MAESTRO v3.0.0</a> (CC BY-NC-SA 4.0)</span>
 			</div>
 			<div class="flex items-center gap-2">

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import { getComposers, getCompetitions } from '#lib/api.js';
 	import type { Composer, CompetitionSummary } from '#lib/stores.js';
 	import ComposerCard from '../components/ComposerCard.svelte';
@@ -54,7 +55,7 @@
 	<section class="mb-14">
 		<div class="flex items-center justify-between mb-5">
 			<h2 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Composers</h2>
-			<a href="/composers" class="text-sm text-accent-500 hover:underline">View all {composers.length}</a>
+			<a href={resolve('/composers')} class="text-sm text-accent-500 hover:underline">View all {composers.length}</a>
 		</div>
 		<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
 			{#each composers.slice(0, 12) as composer (composer.slug)}

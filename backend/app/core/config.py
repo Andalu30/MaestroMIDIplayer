@@ -1,7 +1,10 @@
 from pathlib import Path
 from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
+
+from .base_path import normalize_base_path
 
 
 class Settings(BaseSettings):
@@ -24,6 +27,13 @@ class Settings(BaseSettings):
     env: str = "development"
     # Comma-separated or JSON list of allowed CORS origins.
     cors_origins: list[str] = ["https://midi.andalu30.me", "http://localhost:8000"]
+    # Serve from a subfolder, e.g. "/midi" for https://host/midi/ (empty = root)
+    base_path: str = ""
+
+    @field_validator("base_path")
+    @classmethod
+    def _normalize_base_path(cls, value: str) -> str:
+        return normalize_base_path(value)
 
     model_config = {"env_prefix": "MAESTRO_"}
 
