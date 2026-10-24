@@ -15,9 +15,10 @@
 	onMount(() => {
 		if (!navigator.requestMIDIAccess) {
 			midiSupported = false;
-		} else {
-			refreshClientPorts();
+			return;
 		}
+		refreshClientPorts();
+		return midiPlayer.onOutputsChange(() => refreshClientPorts());
 	});
 
 	async function refreshClientPorts() {

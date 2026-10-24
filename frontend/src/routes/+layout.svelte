@@ -50,6 +50,7 @@
 		} else {
 			const outputs = await midiPlayer.getMidiOutputs();
 			hasMidiOutputs = outputs.length > 0;
+			midiPlayer.onOutputsChange((available) => (hasMidiOutputs = available.length > 0));
 		}
 	});
 </script>

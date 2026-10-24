@@ -39,10 +39,13 @@ export class MidiPlayer {
 	private startTime = 0;        // performance.now() when playback started
 	private pausedAt = 0;         // elapsed seconds (original tempo) when paused
 	private nextEventIndex = 0;
+	private sentUpTo = 0;         // index of the first scheduled event not yet sent
 	private scheduledTimers: number[] = [];
 	private positionTimer = 0;
 
 	private onStateChange: StateChangeCallback | null = null;
+	private midiAccess: MIDIAccess | null = null;
+	private outputListeners = new Set<(available: MIDIOutput[]) => void>();
 
 	// Active note tracking — internal Map (note -> velocity) updated on every event,
 	// flushed to Svelte store at ~30fps to decouple MIDI timing from rendering
@@ -59,6 +62,8 @@ export class MidiPlayer {
 				this.resyncVisualization();
 			}
 		});
+		// Closing/reloading the tab mid-piece must not leave keys or pedal held
+		window.addEventListener('pagehide', () => this.allNotesOff());
 	}
 
 	setStateChangeCallback(cb: StateChangeCallback) {
@@ -67,11 +72,38 @@ export class MidiPlayer {
 
 	async getMidiOutputs(): Promise<MIDIOutput[]> {
 		try {
-			const access = await navigator.requestMIDIAccess({ sysex: false });
-			return Array.from(access.outputs.values());
+			return Array.from((await this.getAccess()).outputs.values());
 		} catch {
 			return [];
 		}
+	}
+
+	/** Notified with the available outputs whenever a MIDI device connects/disconnects. */
+	onOutputsChange(listener: (available: MIDIOutput[]) => void): () => void {
+		this.outputListeners.add(listener);
+		return () => this.outputListeners.delete(listener);
+	}
+
+	private async getAccess(): Promise<MIDIAccess> {
+		if (!this.midiAccess) {
+			const access = await navigator.requestMIDIAccess({ sysex: false });
+			// e.g. a Bluetooth piano paired after the page loaded
+			access.addEventListener('statechange', (e) => this.handlePortChange(e as MIDIConnectionEvent));
+			this.midiAccess = access;
+		}
+		return this.midiAccess;
+	}
+
+	private handlePortChange(e: MIDIConnectionEvent) {
+		const port = e.port;
+		if (!port || port.type !== 'output' || !this.midiAccess) return;
+		const available = Array.from(this.midiAccess.outputs.values()).filter((o) => o.state === 'connected');
+		if (port.state === 'disconnected') {
+			this.outputs = this.outputs.filter((o) => o.id !== port.id);
+		} else if (this.outputs.length === 0) {
+			this.outputs = available; // same default as startup: all outputs
+		}
+		for (const listener of this.outputListeners) listener(available);
 	}
 
 	setOutput(output: MIDIOutput | null) {
@@ -200,7 +232,7 @@ export class MidiPlayer {
 
 		if (wasPlaying) {
 			this.startTime = performance.now() - (pos * 1000 / this.tempo);
-			this.scheduleEvents();
+			this.startScheduling();
 		}
 	}
 
@@ -215,7 +247,7 @@ export class MidiPlayer {
 
 		this.playing = true;
 		this.startTime = performance.now() - (this.pausedAt * 1000 / this.tempo);
-		this.scheduleEvents();
+		this.startScheduling();
 		this.startPositionUpdates();
 		this.startNotesFlush();
 		this.emitState('playing');
@@ -264,7 +296,7 @@ export class MidiPlayer {
 
 		if (wasPlaying) {
 			this.startTime = performance.now() - (this.pausedAt * 1000 / this.tempo);
-			this.scheduleEvents();
+			this.startScheduling();
 		}
 		this.emitState(wasPlaying ? 'playing' : 'paused');
 	}
@@ -274,7 +306,10 @@ export class MidiPlayer {
 		const wasPlaying = this.playing;
 
 		if (wasPlaying) {
+			// Resume from the first event that hasn't been sent yet: cancelled timers
+			// would otherwise drop up to the look-ahead window (incl. note-offs → stuck keys)
 			this.clearScheduled();
+			this.nextEventIndex = this.sentUpTo;
 		}
 
 		this.tempo = Math.max(0.25, Math.min(2.0, tempo));
@@ -282,7 +317,7 @@ export class MidiPlayer {
 
 		if (wasPlaying) {
 			this.startTime = performance.now() - (this.pausedAt * 1000 / this.tempo);
-			this.scheduleEvents();
+			this.startScheduling();
 		}
 	}
 
@@ -319,6 +354,11 @@ export class MidiPlayer {
 
 	// --- Private ---
 
+	private startScheduling() {
+		this.sentUpTo = this.nextEventIndex;
+		this.scheduleEvents();
+	}
+
 	private scheduleEvents() {
 		// Look-ahead window: 3s is enough to survive background-tab throttling
 		// (timers fire at ~1fps), while keeping the buffer small enough that
@@ -346,6 +386,7 @@ export class MidiPlayer {
 			const delay = Math.max(0, aheadMs);
 			const timer = window.setTimeout(() => {
 				if (!this.playing) return;
+				this.sentUpTo = i + 1;
 				this.sendMidiNow(event);
 				this.updateVisualization(event);
 			}, delay);
@@ -360,6 +401,7 @@ export class MidiPlayer {
 			const remainingMs = lastRealTime - now + 300;
 			const timer = window.setTimeout(() => {
 				if (this.playing) {
+					this.allNotesOff(); // release anything still held (e.g. sustain pedal)
 					this.playing = false;
 					this.pausedAt = 0;
 					this.nextEventIndex = 0;
