@@ -1,6 +1,7 @@
 """Load the MAESTRO CSV into memory and provide search/filter/sort."""
 
 import csv
+import logging
 from collections import defaultdict
 from pathlib import Path
 
@@ -10,9 +11,12 @@ from .models import (
     CompetitionSession,
     CompetitionYear,
     Composer,
+    PaginatedTracks,
     Track,
     _make_slug,
 )
+
+logger = logging.getLogger("maestro")
 
 
 class DatasetStore:
@@ -64,6 +68,19 @@ class DatasetStore:
         )
         self._composer_map = {c.slug: c for c in self.composers}
 
+        # Warn if any two composer names mapped to the same slug (data loss risk)
+        slug_to_names: dict[str, list[str]] = defaultdict(list)
+        for composer_name in self.by_composer:
+            slug_to_names[_make_slug(composer_name)].append(composer_name)
+        for slug, names in slug_to_names.items():
+            if len(names) > 1:
+                logger.warning(
+                    "Slug collision: %d composers share slug '%s': %s",
+                    len(names),
+                    slug,
+                    ", ".join(f'"{n}"' for n in names),
+                )
+
     def get_composer(self, slug: str) -> Composer | None:
         return self._composer_map.get(slug)
 
@@ -80,7 +97,9 @@ class DatasetStore:
         year: int | None = None,
         sort: str = "composer",
         order: str = "asc",
-    ) -> list[Track]:
+        skip: int = 0,
+        limit: int = 100,
+    ) -> PaginatedTracks:
         results = self.tracks
 
         if composer:
@@ -109,7 +128,8 @@ class DatasetStore:
         key_fn = sort_keys.get(sort, sort_keys["composer"])
         results = sorted(results, key=key_fn, reverse=(order == "desc"))
 
-        return results
+        total = len(results)
+        return PaginatedTracks(total=total, skip=skip, limit=limit, items=results[skip : skip + limit])
 
     def get_competition(self, year: int) -> CompetitionYear | None:
         tracks = self.by_year.get(year)

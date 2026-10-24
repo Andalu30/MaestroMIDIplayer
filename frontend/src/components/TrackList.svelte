@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Track } from '$lib/stores';
-	import { currentTrack, queue } from '$lib/stores';
+	import { currentTrack, queue, toasts } from '$lib/stores';
 	import { formatDuration } from '$lib/utils';
 
 	interface TrackGroup {
@@ -41,11 +41,13 @@
 	let groups = $derived.by(() => {
 		const map = new Map<string, Track[]>();
 		for (const track of tracks) {
-			const existing = map.get(track.title);
+			// Normalize title: collapse whitespace so "Nocturne  Op. 9" and "Nocturne Op. 9" group together
+			const normalizedTitle = track.title.replace(/\s+/g, ' ').trim();
+			const existing = map.get(normalizedTitle);
 			if (existing) {
 				existing.push(track);
 			} else {
-				map.set(track.title, [track]);
+				map.set(normalizedTitle, [track]);
 			}
 		}
 
@@ -122,6 +124,30 @@
 	function sortIndicator(field: typeof sortField): string {
 		if (sortField !== field) return '';
 		return sortAsc ? ' \u2191' : ' \u2193';
+	}
+
+	function copyTrackLink(track: Track) {
+		const url = `${window.location.origin}/composer/${track.composer_slug}#track-${track.id}`;
+		// navigator.clipboard only exists in secure contexts (HTTPS/localhost);
+		// plain-HTTP LAN deployments fall back to the legacy execCommand path.
+		const copy = navigator.clipboard
+			? navigator.clipboard.writeText(url)
+			: new Promise<void>((resolve, reject) => {
+					const ta = document.createElement('textarea');
+					ta.value = url;
+					ta.style.position = 'fixed';
+					ta.style.opacity = '0';
+					document.body.appendChild(ta);
+					ta.select();
+					const ok = document.execCommand('copy');
+					ta.remove();
+					if (ok) resolve();
+					else reject(new Error('copy failed'));
+				});
+		copy.then(
+			() => toasts.show('Link copied!'),
+			() => toasts.show('Could not copy link')
+		);
 	}
 </script>
 
@@ -203,14 +229,13 @@
 				<!-- Single-performance row -->
 				{@const track = group.tracks[0]}
 				{@const isPlaying = $currentTrack?.id === track.id}
-				<button
+				<div
 					id="track-{track.id}"
-					class="w-full flex items-center gap-4 px-4 py-2.5 rounded-lg text-left
+					class="flex items-center gap-4 px-4 py-2.5 rounded-lg
 						   transition-colors group
 						   {isPlaying
 							? 'bg-accent-500/10 dark:bg-accent-500/15'
 							: 'hover:bg-surface-100 dark:hover:bg-surface-850'}"
-					onclick={() => playTrack(track)}
 				>
 					<span class="w-8 shrink-0 text-sm {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-300 dark:text-surface-600'} flex items-center justify-center">
 						{#if isPlaying}
@@ -219,18 +244,29 @@
 							·
 						{/if}
 					</span>
-					<div class="flex-1 min-w-0">
+					<button class="flex-1 min-w-0 text-left" onclick={() => playTrack(track)}>
 						<p class="text-sm truncate {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-900 dark:text-surface-100'}">
 							{track.title}
 						</p>
 						<p class="text-xs text-surface-500 dark:text-surface-400">
 							{track.year}{#if track.round} · Round {track.round}{/if}
 						</p>
-					</div>
+					</button>
+					<button
+						onclick={(e) => { e.stopPropagation(); copyTrackLink(track); }}
+						aria-label="Copy link to track"
+						class="p-1 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 transition-opacity
+							   text-surface-400 hover:text-accent-500"
+					>
+						<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+							<path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+						</svg>
+					</button>
 					<span class="w-16 shrink-0 text-sm text-surface-500 dark:text-surface-400 tabular-nums text-right">
 						{track.duration_formatted}
 					</span>
-				</button>
+				</div>
 			{/if}
 		{/each}
 	{:else}

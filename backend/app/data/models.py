@@ -42,6 +42,13 @@ class Track(BaseModel):
         return _make_slug(self.composer)
 
 
+class PaginatedTracks(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    items: list[Track]
+
+
 class Composer(BaseModel):
     name: str
     slug: str

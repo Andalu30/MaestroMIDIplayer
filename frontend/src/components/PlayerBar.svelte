@@ -13,6 +13,7 @@
 	let expanded = $state(false);
 
 	let loadedTrackId = $state<number | null>(null);
+	let loadAbortController: AbortController | null = null;
 
 	// Drag-to-expand/collapse state
 	let dragging = $state(false);
@@ -99,12 +100,17 @@
 	});
 
 	async function loadAndPlay(trackId: number) {
+		// Cancel any in-progress load
+		loadAbortController?.abort();
+		loadAbortController = new AbortController();
+		const { signal } = loadAbortController;
+
 		loading = true;
 		try {
 			loadedTrackId = null; // Prevent auto-advance from the stop() below
 			midiPlayer.stop();
 			if (trackId >= 0) {
-				const dur = await midiPlayer.load(trackId);
+				const dur = await midiPlayer.load(trackId, signal);
 				duration = dur;
 			} else {
 				// Negative ID = already loaded via loadFromBuffer (standalone player)
@@ -115,11 +121,19 @@
 			if (midiPlayer.hasOutputs()) {
 				midiPlayer.play();
 			}
-		} catch (e) {
+		} catch (e: unknown) {
+			if (e instanceof Error && e.name === 'AbortError') return; // cancelled, no error display
 			console.error('Failed to load MIDI:', e);
 		} finally {
-			loading = false;
+			// A newer load may have superseded this one; let it own the spinner
+			if (loadAbortController?.signal === signal) loading = false;
 		}
+	}
+
+	function cancelLoad() {
+		loadAbortController?.abort();
+		loading = false;
+		currentTrack.set(null); // nothing is loaded, so don't leave a stale track selected
 	}
 
 	function togglePlay() {
@@ -261,7 +275,7 @@
 		<!-- Piano keyboard visualization -->
 		{#if $showPianoViz}
 		<div class="absolute inset-0 flex items-end justify-center pointer-events-none overflow-hidden" aria-hidden="true">
-			<div class="relative" style="width: {keyboardWidth}px; height: 100%">
+			<div class="relative hidden sm:block" style="width: {keyboardWidth}px; height: 100%">
 				{#each pianoKeys.filter(k => !k.isBlack) as key (key.midi)}
 					{@const vel = $activeNotes.get(key.midi)}
 					<div
@@ -269,7 +283,7 @@
 							   {vel !== undefined
 								? 'bg-surface-400/60 dark:bg-surface-400/40'
 								: 'bg-surface-200/20 dark:bg-surface-700/15'}"
-						style="left: {key.left}px; width: {KEY_W - 1}px; height: {vel !== undefined ? 12 + (vel / 127) * 16 : 12}px"
+						style="left: {key.left}px; width: {KEY_W - 1}px; height: {vel !== undefined ? 12 + (vel / 127) * 16 : 12}px; will-change: background-color, height"
 					></div>
 				{/each}
 				{#each pianoKeys.filter(k => k.isBlack) as key (key.midi)}
@@ -279,7 +293,7 @@
 							   {vel !== undefined
 								? 'bg-surface-500/70 dark:bg-surface-300/50'
 								: 'bg-surface-300/20 dark:bg-surface-600/15'}"
-						style="left: {key.left}px; width: {BLACK_W}px; height: {vel !== undefined ? 8 + (vel / 127) * 12 : 8}px"
+						style="left: {key.left}px; width: {BLACK_W}px; height: {vel !== undefined ? 8 + (vel / 127) * 12 : 8}px; will-change: background-color, height"
 					></div>
 				{/each}
 			</div>
@@ -322,9 +336,9 @@
 					class="p-1.5 rounded-full hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-400">
 					<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 				</button>
-				<button onclick={togglePlay} aria-label={$playerState === 'playing' ? 'Pause' : 'Play'}
-					class="p-2 rounded-full bg-accent-500 hover:bg-accent-600 text-white
-						   {loading ? 'opacity-50 pointer-events-none' : ''}">
+				<button onclick={loading ? cancelLoad : togglePlay}
+					aria-label={loading ? 'Cancel loading' : $playerState === 'playing' ? 'Pause' : 'Play'}
+					class="p-2 rounded-full bg-accent-500 hover:bg-accent-600 text-white">
 					{#if loading}
 						<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 					{:else if $playerState === 'playing'}
@@ -477,7 +491,7 @@
 								   {vel !== undefined
 									? 'bg-accent-400 dark:bg-accent-500 border-accent-500 dark:border-accent-600'
 									: 'bg-white dark:bg-surface-200 border-surface-300 dark:border-surface-400'}"
-							style="left: {key.leftPct}%; width: calc({key.widthPct}% - 1px)"
+							style="left: {key.leftPct}%; width: calc({key.widthPct}% - 1px); will-change: background-color"
 						></div>
 					{/each}
 					<!-- Black keys -->
@@ -488,7 +502,7 @@
 								   {vel !== undefined
 									? 'bg-accent-600 dark:bg-accent-400'
 									: 'bg-surface-900 dark:bg-surface-950'}"
-							style="left: {key.leftPct}%; width: {key.widthPct}%; height: 62%"
+							style="left: {key.leftPct}%; width: {key.widthPct}%; height: 62%; will-change: background-color"
 						></div>
 					{/each}
 				</div>
@@ -573,9 +587,9 @@
 						   text-surface-600 dark:text-surface-400 transition-colors">
 					<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 				</button>
-				<button onclick={togglePlay} aria-label={$playerState === 'playing' ? 'Pause' : 'Play'}
-					class="p-4 rounded-full bg-accent-500 hover:bg-accent-600 text-white shadow-lg
-						   {loading ? 'opacity-50 pointer-events-none' : ''} transition-colors">
+				<button onclick={loading ? cancelLoad : togglePlay}
+					aria-label={loading ? 'Cancel loading' : $playerState === 'playing' ? 'Pause' : 'Play'}
+					class="p-4 rounded-full bg-accent-500 hover:bg-accent-600 text-white shadow-lg transition-colors">
 					{#if loading}
 						<div class="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 					{:else if $playerState === 'playing'}

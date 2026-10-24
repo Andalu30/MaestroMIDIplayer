@@ -1,6 +1,7 @@
 import logging
 import os
 import stat
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .core.config import settings
-from .services.composer_images import close_http_client
+from .services.composer_images import close_http_client, fetch_composer_image
 from .services.dataset_bootstrap import ensure_dataset_available
 from .data.dataset import store
 from .core.limiter import limiter
@@ -119,8 +120,27 @@ async def lifespan(app: FastAPI):
             except PermissionError:
                 logger.warning("Sample MIDI file exists but is NOT readable — MIDI serving will fail")
 
+    # Optional image cache warmup
+    warmup_task = None
+    if settings.prefetch_images:
+        import asyncio
+        logger.info("Image cache warmup enabled — pre-fetching %d composer portraits in background", len(store.composers))
+        async def _warmup():
+            for composer in store.composers:
+                try:
+                    await fetch_composer_image(composer.slug, composer.name)
+                except Exception:
+                    logger.warning("Image warmup failed for %s", composer.slug, exc_info=True)
+        # Keep a strong reference: the event loop only holds tasks weakly
+        warmup_task = asyncio.create_task(_warmup())
+
+    _startup_time = time.time()
+    app.state.startup_time = _startup_time
+
     yield
 
+    if warmup_task is not None:
+        warmup_task.cancel()
     await close_http_client()
 
 
@@ -155,12 +175,26 @@ app.include_router(midi.router)
 
 
 @app.get("/api/health")
-def health():
+def health(request: Request):
+    # Check dataset readability
+    csv_path = settings.dataset_path / "maestro-v3.0.0.csv"
+    dataset_ok = csv_path.exists() and os.access(csv_path, os.R_OK)
+
+    # Count cached composer images
+    cache_dir = settings.image_cache_dir
+    cached_images = len(list(cache_dir.glob("*.jpg"))) if cache_dir.is_dir() else 0
+
+    uptime_seconds = round(time.time() - request.app.state.startup_time) if hasattr(request.app.state, "startup_time") else None
+
+    status = "ok" if dataset_ok else "degraded"
     return {
-        "status": "ok",
+        "status": status,
         "tracks": len(store.tracks),
         "composers": len(store.composers),
         "years": sorted(store.by_year.keys()),
+        "dataset_readable": dataset_ok,
+        "cached_images": cached_images,
+        "uptime_seconds": uptime_seconds,
     }
 
 

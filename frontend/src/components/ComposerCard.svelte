@@ -23,6 +23,7 @@
 			<img
 				src={composerImageUrl(composer.slug)}
 				alt={composer.name}
+				loading="lazy"
 				class="w-full h-full object-cover"
 				onerror={() => imgError = true}
 			/>

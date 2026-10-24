@@ -1,10 +1,12 @@
 # Dependencies and build artifacts
-node_modules/
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.svelte-kit/
+# (**/ prefix needed: a bare pattern only matches at the context root, which let
+#  a host backend/.venv and frontend/node_modules overwrite the image's own)
+**/node_modules/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.svelte-kit/
 frontend/build/
 
 # IDE and editor files
@@ -33,3 +35,6 @@ Thumbs.db
 
 # Dev cache (will be recreated in container)
 backend/.cache/
+
+# Local dataset copy (mounted or auto-downloaded at runtime, never baked in)
+**/MaestroDataset/

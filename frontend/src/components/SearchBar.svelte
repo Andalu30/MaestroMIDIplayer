@@ -1,37 +1,65 @@
 <script lang="ts">
-	import { getTracks } from '$lib/api';
+	import { getTracks, getCompetitions } from '$lib/api';
 	import type { Track } from '$lib/stores';
 	import { goto } from '$app/navigation';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	let { size = 'sm' }: { size?: 'sm' | 'lg' } = $props();
 
+	// Competition years come from the dataset so the filter never drifts from it
+	let competitionYears = $state<number[]>([]);
+
+	onMount(() => {
+		getCompetitions()
+			.then((comps) => (competitionYears = comps.map((c) => c.year).sort((a, b) => a - b)))
+			.catch(() => {}); // filter just stays at "All years"
+	});
+
 	let query = $state('');
+	let selectedYear = $state<number | null>(null);
 	let results = $state<Track[]>([]);
 	let open = $state(false);
+	let searchError = $state(false);
 	let selectedIndex = $state(-1);
 	let timer: ReturnType<typeof setTimeout>;
 	let containerEl: HTMLDivElement;
 	let dropdownStyle = $state('');
 
-	function onInput() {
+	function triggerSearch() {
 		clearTimeout(timer);
 		selectedIndex = -1;
-		if (query.length < 2) {
+		searchError = false;
+		if (query.length < 2 && selectedYear === null) {
 			results = [];
 			open = false;
 			return;
 		}
 		timer = setTimeout(async () => {
-			results = await getTracks({ q: query });
-			results = results.slice(0, 8);
-			open = results.length > 0;
-			selectedIndex = -1;
-			if (open) {
+			try {
+				const data = await getTracks({ q: query || undefined, year: selectedYear ?? undefined, limit: 8 });
+				results = data.items;
+				open = results.length > 0 || searchError;
+				selectedIndex = -1;
+				if (open) {
+					await tick();
+					updateDropdownPosition();
+				}
+			} catch {
+				results = [];
+				searchError = true;
+				open = true;
 				await tick();
 				updateDropdownPosition();
 			}
-		}, 250);
+		}, 400);
+	}
+
+	function onInput() {
+		triggerSearch();
+	}
+
+	function onYearChange() {
+		if (query.length >= 2 || selectedYear !== null) triggerSearch();
 	}
 
 	function updateDropdownPosition() {
@@ -98,6 +126,19 @@
 			aria-expanded={open}
 			aria-autocomplete="list"
 		/>
+		<select
+			bind:value={selectedYear}
+			onchange={onYearChange}
+			class="bg-transparent border-none outline-none shrink-0 text-xs
+				   text-surface-500 dark:text-surface-400 cursor-pointer
+				   {size === 'lg' ? 'text-sm' : 'text-xs'}"
+			aria-label="Filter by year"
+		>
+			<option value={null}>All years</option>
+			{#each competitionYears as yr}
+				<option value={yr}>{yr}</option>
+			{/each}
+		</select>
 	</div>
 
 	{#if open}
@@ -107,25 +148,31 @@
 					rounded-xl shadow-xl overflow-hidden"
 			 style={dropdownStyle}
 			 role="listbox">
-			{#each results as track, i}
-				<button
-					class="w-full text-left px-4 py-2.5
-						   transition-colors flex items-center gap-3
-						   {i === selectedIndex
-							? 'bg-surface-100 dark:bg-surface-700'
-							: 'hover:bg-surface-100 dark:hover:bg-surface-700'}"
-					onclick={() => select(track)}
-					tabindex="-1"
-					role="option"
-					aria-selected={i === selectedIndex}
-				>
-					<div class="min-w-0 flex-1">
-						<p class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{track.title}</p>
-						<p class="text-xs text-surface-500 dark:text-surface-400">{track.composer} · {track.year}</p>
-					</div>
-					<span class="text-xs text-surface-400 tabular-nums shrink-0">{track.duration_formatted}</span>
-				</button>
-			{/each}
+			{#if searchError}
+				<div class="px-4 py-3 text-sm text-surface-500 dark:text-surface-400">
+					Search unavailable. Please try again.
+				</div>
+			{:else}
+				{#each results as track, i}
+					<button
+						class="w-full text-left px-4 py-2.5
+							   transition-colors flex items-center gap-3
+							   {i === selectedIndex
+								? 'bg-surface-100 dark:bg-surface-700'
+								: 'hover:bg-surface-100 dark:hover:bg-surface-700'}"
+						onclick={() => select(track)}
+						tabindex="-1"
+						role="option"
+						aria-selected={i === selectedIndex}
+					>
+						<div class="min-w-0 flex-1">
+							<p class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{track.title}</p>
+							<p class="text-xs text-surface-500 dark:text-surface-400">{track.composer} · {track.year}</p>
+						</div>
+						<span class="text-xs text-surface-400 tabular-nums shrink-0">{track.duration_formatted}</span>
+					</button>
+				{/each}
+			{/if}
 		</div>
 	{/if}
 </div>

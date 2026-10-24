@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
 	import { getComposer, getComposerTracks, composerImageUrl } from '$lib/api';
-	import { currentTrack, queue } from '$lib/stores';
+	import { currentTrack, queue, toasts } from '$lib/stores';
 	import type { Composer, Track } from '$lib/stores';
 	import { formatTotalDuration } from '$lib/utils';
 	import TrackList from '../../../components/TrackList.svelte';
@@ -11,13 +11,15 @@
 	let tracks = $state<Track[]>([]);
 	let loading = $state(true);
 	let imgError = $state(false);
+	let error = $state<string | null>(null);
 
-	const slug = $derived(page.params.slug);
+	const slug = $derived(page.params.slug ?? '');
 
 	$effect(() => {
 		const currentSlug = slug; // track dependency
 		loading = true;
 		imgError = false;
+		error = null;
 
 		Promise.all([
 			getComposer(currentSlug),
@@ -39,6 +41,9 @@
 					setTimeout(() => el.classList.remove('search-highlight'), 2000);
 				}
 			}
+		}).catch((e: Error) => {
+			error = e.message.includes('404') ? 'Composer not found.' : 'Failed to load composer. Please try again.';
+			loading = false;
 		});
 	});
 
@@ -50,6 +55,7 @@
 		if (tracks.length > 0) {
 			currentTrack.set(tracks[0]);
 			queue.set(tracks.slice(1));
+			toasts.show(`Queued ${tracks.length} track${tracks.length === 1 ? '' : 's'}`);
 		}
 	}
 </script>
@@ -59,8 +65,23 @@
 </svelte:head>
 
 {#if loading}
-	<div class="flex justify-center py-20">
-		<div class="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin"></div>
+	<!-- Skeleton screen -->
+	<section class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10 animate-pulse">
+		<div class="w-32 h-32 rounded-full bg-surface-200 dark:bg-surface-700 shrink-0"></div>
+		<div class="flex-1 space-y-3">
+			<div class="h-8 w-48 bg-surface-200 dark:bg-surface-700 rounded"></div>
+			<div class="h-4 w-32 bg-surface-200 dark:bg-surface-700 rounded"></div>
+			<div class="h-9 w-28 bg-surface-200 dark:bg-surface-700 rounded-full"></div>
+		</div>
+	</section>
+	<div class="space-y-2 animate-pulse">
+		{#each Array(8) as _}
+			<div class="h-12 bg-surface-200 dark:bg-surface-700 rounded-lg"></div>
+		{/each}
+	</div>
+{:else if error}
+	<div class="flex flex-col items-center py-20 text-surface-500 dark:text-surface-400">
+		<p class="text-lg font-medium">{error}</p>
 	</div>
 {:else if composer}
 	<!-- Header -->
