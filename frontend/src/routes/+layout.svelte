@@ -216,7 +216,15 @@
 	<footer class="border-t border-surface-200 dark:border-surface-800 pb-24">
 		<div class="max-w-6xl mx-auto px-4 py-6 flex flex-col items-center gap-4 text-xs text-surface-400">
 			<div class="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
-				<span>MaestroMIDIplayer</span>
+				<span>
+					MaestroMIDIplayer
+					{#if __APP_VERSION__ === 'dev'}
+						<span>dev</span>
+					{:else}
+						<a href="https://github.com/Andalu30/MaestroMIDIplayer/releases/tag/{__APP_VERSION__}" target="_blank" rel="noopener"
+							class="hover:text-accent-500 transition-colors">{__APP_VERSION__}</a>
+					{/if}
+				</span>
 				<span>This app is entirely vibecoded, check out the <a class="text-accent-500 transition-colors" href="{resolve('/about')}#how-it-was-made">About page</a> for more info.</span>
 				<span><a href="https://magenta.tensorflow.org/datasets/maestro" target="_blank" rel="noopener" class="hover:text-accent-500 transition-colors">MAESTRO v3.0.0</a> (CC BY-NC-SA 4.0)</span>
 			</div>
