@@ -21,6 +21,7 @@
 	let query = $state('');
 	let selectedYear = $state<number | null>(null);
 	let results = $state<Track[]>([]);
+	let total = $state(0);
 	let open = $state(false);
 	let searchError = $state(false);
 	let selectedIndex = $state(-1);
@@ -41,6 +42,7 @@
 			try {
 				const data = await getTracks({ q: query || undefined, year: selectedYear ?? undefined, limit: 8 });
 				results = data.items;
+				total = data.total;
 				open = results.length > 0 || searchError;
 				selectedIndex = -1;
 				if (open) {
@@ -79,7 +81,29 @@
 		goto(`${resolve('/composer/[slug]', { slug: track.composer_slug })}#track-${track.id}`);
 	}
 
+	function searchPageUrl(): string {
+		const params = new URLSearchParams();
+		if (query.trim()) params.set('q', query.trim());
+		if (selectedYear !== null) params.set('year', String(selectedYear));
+		return `${resolve('/search')}?${params}`;
+	}
+
+	function showAll() {
+		clearTimeout(timer);
+		open = false;
+		results = [];
+		selectedIndex = -1;
+		goto(searchPageUrl());
+		query = '';
+	}
+
 	function onKeydown(e: KeyboardEvent) {
+		// Enter without a highlighted suggestion opens the full results page
+		if (e.key === 'Enter' && selectedIndex < 0 && (query.trim().length >= 2 || selectedYear !== null)) {
+			e.preventDefault();
+			showAll();
+			return;
+		}
 		if (!open || results.length === 0) return;
 
 		if (e.key === 'ArrowDown') {
@@ -177,6 +201,14 @@
 						<span class="text-xs text-surface-400 tabular-nums shrink-0">{track.duration_formatted}</span>
 					</button>
 				{/each}
+				{#if total > results.length}
+					<button
+						class="w-full text-left px-4 py-2.5 text-sm text-accent-500 hover:bg-surface-100 dark:hover:bg-surface-700
+							   border-t border-surface-200 dark:border-surface-700"
+						onclick={showAll}
+						tabindex="-1"
+					>See all {total} results →</button>
+				{/if}
 			{/if}
 		</div>
 	{/if}

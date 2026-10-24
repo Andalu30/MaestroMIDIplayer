@@ -108,6 +108,25 @@ class TestTracks:
         res = client.get("/api/tracks/-1")
         assert res.status_code == 404
 
+    def test_random_track(self, client):
+        res = client.get("/api/tracks/random")
+        assert res.status_code == 200
+        assert 0 <= res.json()["id"] < 4
+
+    def test_random_track_filtered(self, client):
+        for _ in range(10):
+            body = client.get("/api/tracks/random?composer=frederic-chopin&year=2018").json()
+            assert body["composer"] == "Frédéric Chopin" and body["year"] == 2018
+
+    def test_random_track_no_match(self, client):
+        assert client.get("/api/tracks/random?composer=frederic-chopin&year=2004").status_code == 404
+        assert client.get("/api/tracks/random?composer=nobody").status_code == 404
+
+    def test_list_tracks_filter_composer(self, client):
+        body = client.get("/api/tracks?composer=frederic-chopin").json()
+        assert body["total"] == 2
+        assert all(t["composer"] == "Frédéric Chopin" for t in body["items"])
+
 
 # ---------------------------------------------------------------------------
 # Composers

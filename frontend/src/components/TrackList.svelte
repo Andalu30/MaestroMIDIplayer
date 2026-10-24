@@ -2,7 +2,8 @@
 	import { untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import type { Track } from '#lib/stores.js';
-	import { currentTrack, queue, toasts } from '#lib/stores.js';
+	import { currentTrack, toasts, favorites } from '#lib/stores.js';
+	import { playList, queueNext, addToQueue, toggleFavorite, isFavorite } from '#lib/playback.js';
 	import { formatDuration, pieceKey } from '#lib/utils.js';
 
 	interface TrackGroup {
@@ -12,14 +13,16 @@
 		avgDuration: string;
 	}
 
-	let { tracks, showComposer = false, showYear = false, allowGrouping = false }: {
+	let { tracks, showComposer = false, showYear = false, allowGrouping = false, keepOrder = false }: {
 		tracks: Track[];
 		showComposer?: boolean;
 		showYear?: boolean;
 		allowGrouping?: boolean;
+		/** Start in the given order (e.g. most recent first) until a column is clicked */
+		keepOrder?: boolean;
 	} = $props();
 
-	let sortField = $state<'title' | 'duration' | 'year' | 'composer'>('title');
+	let sortField = $state<'none' | 'title' | 'duration' | 'year' | 'composer'>(untrack(() => keepOrder) ? 'none' : 'title');
 	let sortAsc = $state(true);
 	// allowGrouping only sets the initial mode; the user can toggle afterwards
 	let viewMode = $state<'grouped' | 'flat'>(untrack(() => allowGrouping) ? 'grouped' : 'flat');
@@ -111,10 +114,10 @@
 	}
 
 	function playTrack(track: Track) {
-		currentTrack.set(track);
 		const source = viewMode === 'grouped' ? flatFromGroups : sorted;
 		const index = source.findIndex(t => t.id === track.id);
-		queue.set(index >= 0 ? source.slice(index + 1) : []);
+		if (index >= 0) playList(source, index);
+		else playList([track]);
 	}
 
 	function playGroup(group: TrackGroup) {
@@ -163,12 +166,40 @@
 	}
 </script>
 
+{#snippet rowActions(track: Track)}
+	{@const fav = isFavorite($favorites, track)}
+	{@const reveal = 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 transition-opacity'}
+	<div class="flex items-center shrink-0">
+		<!-- A starred track keeps its heart visible -->
+		<button onclick={() => toggleFavorite(track)} aria-label={fav ? 'Remove from favourites' : 'Add to favourites'} aria-pressed={fav}
+			title={fav ? 'Remove from favourites' : 'Add to favourites'}
+			class="p-1 rounded {fav ? 'text-accent-500' : `text-surface-400 hover:text-accent-500 ${reveal}`}">
+			<svg class="w-4 h-4" fill={fav ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path d="M12 21s-7-4.35-9.5-8.5C.5 9 2.5 5 6.5 5c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3 4 0 6 4 4 7.5C19 16.65 12 21 12 21z"/>
+			</svg>
+		</button>
+		<button onclick={() => queueNext([track])} aria-label="Play next" title="Play next"
+			class="p-1 rounded text-surface-400 hover:text-accent-500 {reveal}">
+			<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path d="M4 6h10M4 12h10M4 18h6"/><path d="M16 15l5 3-5 3z" fill="currentColor"/>
+			</svg>
+		</button>
+		<button onclick={() => addToQueue([track])} aria-label="Add to queue" title="Add to queue"
+			class="p-1 rounded text-surface-400 hover:text-accent-500 {reveal}">
+			<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path d="M4 6h12M4 12h12M4 18h8"/><path d="M18 15v6M15 18h6"/>
+			</svg>
+		</button>
+	</div>
+{/snippet}
+
 <div class="space-y-1">
 	{#if viewMode === 'grouped'}
 		<!-- Grouped header -->
 		<div class="flex items-center gap-4 px-4 py-2 text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">
 			<span class="w-8 shrink-0"></span>
 			<span class="flex-1">Piece</span>
+			<span class="w-[72px] shrink-0"></span>
 			<span class="w-16 shrink-0 text-right">Time</span>
 		</div>
 
@@ -210,31 +241,31 @@
 				{#if expandedGroups.has(group.title)}
 					{#each group.tracks as track (track.id)}
 						{@const isPlaying = $currentTrack?.id === track.id}
-						<button
+						<div
 							id="track-{track.id}"
-							class="w-full flex items-center gap-4 pl-12 pr-4 py-2 rounded-lg
-								   text-left transition-colors
+							class="w-full flex items-center gap-2 pl-12 pr-4 rounded-lg group
+								   transition-colors
 								   {isPlaying
 									? 'bg-accent-500/10 dark:bg-accent-500/15'
 									: 'hover:bg-surface-100 dark:hover:bg-surface-850'}"
-							onclick={() => playTrack(track)}
 						>
-							<span class="w-8 shrink-0 text-sm tabular-nums {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-400'}">
-								{#if isPlaying}
-									<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-								{:else}
-									{track.year}
-								{/if}
-							</span>
-							<div class="flex-1 min-w-0">
-								<p class="text-xs text-surface-500 dark:text-surface-400 truncate">
+							<button class="flex-1 min-w-0 flex items-center gap-4 py-2 text-left" onclick={() => playTrack(track)}>
+								<span class="w-8 shrink-0 text-sm tabular-nums {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-400'}">
+									{#if isPlaying}
+										<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+									{:else}
+										{track.year}
+									{/if}
+								</span>
+								<span class="flex-1 min-w-0 text-xs text-surface-500 dark:text-surface-400 truncate">
 									{track.year} performance{#if track.round} · Round {track.round}{/if}
-								</p>
-							</div>
+								</span>
+							</button>
+							{@render rowActions(track)}
 							<span class="w-16 shrink-0 text-sm text-surface-500 dark:text-surface-400 tabular-nums text-right">
 								{track.duration_formatted}
 							</span>
-						</button>
+						</div>
 					{/each}
 				{/if}
 			{:else}
@@ -264,6 +295,7 @@
 							{track.year}{#if track.round} · Round {track.round}{/if}
 						</p>
 					</button>
+					{@render rowActions(track)}
 					<button
 						onclick={(e) => { e.stopPropagation(); copyTrackLink(track); }}
 						aria-label="Copy link to track"
@@ -298,6 +330,7 @@
 					Year{sortIndicator('year')}
 				</button>
 			{/if}
+			<span class="w-[72px] shrink-0"></span>
 			<button class="w-16 shrink-0 text-right hover:text-accent-500 transition-colors" onclick={() => toggleSort('duration')}>
 				Time{sortIndicator('duration')}
 			</button>
@@ -306,46 +339,48 @@
 		<!-- Flat view: track rows -->
 		{#each sorted as track, i (track.id)}
 			{@const isPlaying = $currentTrack?.id === track.id}
-			<button
+			<div
 				id="track-{track.id}"
-				class="w-full flex items-center gap-4 px-4 py-2.5 rounded-lg text-left
+				class="w-full flex items-center gap-2 px-4 rounded-lg
 					   transition-colors group
 					   {isPlaying
 						? 'bg-accent-500/10 dark:bg-accent-500/15'
 						: 'hover:bg-surface-100 dark:hover:bg-surface-850'}"
-				onclick={() => playTrack(track)}
 			>
-				<span class="w-8 shrink-0 text-sm tabular-nums {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-400'}">
-					{#if isPlaying}
-						<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-					{:else}
-						{i + 1}
-					{/if}
-				</span>
-				<div class="flex-1 min-w-0">
-					<p class="text-sm truncate {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-900 dark:text-surface-100'}">
-						{track.title}
-					</p>
+				<button class="flex-1 min-w-0 flex items-center gap-4 py-2.5 text-left" onclick={() => playTrack(track)}>
+					<span class="w-8 shrink-0 text-sm tabular-nums {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-400'}">
+						{#if isPlaying}
+							<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+						{:else}
+							{i + 1}
+						{/if}
+					</span>
+					<span class="flex-1 min-w-0">
+						<span class="block text-sm truncate {isPlaying ? 'text-accent-500 font-medium' : 'text-surface-900 dark:text-surface-100'}">
+							{track.title}
+						</span>
+						{#if showComposer}
+							<span class="block text-xs text-surface-500 dark:text-surface-400 truncate sm:hidden">
+								{track.composer}
+							</span>
+						{/if}
+					</span>
 					{#if showComposer}
-						<p class="text-xs text-surface-500 dark:text-surface-400 truncate sm:hidden">
+						<span class="w-40 shrink-0 text-sm text-surface-600 dark:text-surface-400 truncate hidden sm:block">
 							{track.composer}
-						</p>
+						</span>
 					{/if}
-				</div>
-				{#if showComposer}
-					<span class="w-40 shrink-0 text-sm text-surface-600 dark:text-surface-400 truncate hidden sm:block">
-						{track.composer}
-					</span>
-				{/if}
-				{#if showYear}
-					<span class="w-16 shrink-0 text-sm text-surface-500 dark:text-surface-400 tabular-nums hidden md:block">
-						{track.year}
-					</span>
-				{/if}
+					{#if showYear}
+						<span class="w-16 shrink-0 text-sm text-surface-500 dark:text-surface-400 tabular-nums hidden md:block">
+							{track.year}
+						</span>
+					{/if}
+				</button>
+				{@render rowActions(track)}
 				<span class="w-16 shrink-0 text-sm text-surface-500 dark:text-surface-400 tabular-nums text-right">
 					{track.duration_formatted}
 				</span>
-			</button>
+			</div>
 		{/each}
 	{/if}
 

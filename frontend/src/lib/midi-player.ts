@@ -33,6 +33,7 @@ export class MidiPlayer {
 	private tracks: TrackInfo[] = [];
 	private duration = 0;
 	private tempo = 1.0;
+	private velocityScale = 1.0;
 
 	// Playback state
 	private playing = false;
@@ -101,10 +102,43 @@ export class MidiPlayer {
 		const available = Array.from(this.midiAccess.outputs.values()).filter((o) => o.state === 'connected');
 		if (port.state === 'disconnected') {
 			this.outputs = this.outputs.filter((o) => o.id !== port.id);
-		} else if (this.outputs.length === 0) {
-			this.outputs = available; // same default as startup: all outputs
+		} else if (this.outputs.length === 0 || (port.name && port.name === this.getPreferredOutput())) {
+			// e.g. the preferred piano came back: switch to it from the all-outputs fallback
+			this.outputs = this.pickOutputs(available);
 		}
 		for (const listener of this.outputListeners) listener(available);
+	}
+
+	/** Name of the output chosen in Settings, or null for "all outputs". Remembered across visits. */
+	getPreferredOutput(): string | null {
+		try {
+			return localStorage.getItem('midiOutput');
+		} catch {
+			return null;
+		}
+	}
+
+	setPreferredOutput(name: string | null) {
+		try {
+			if (name) localStorage.setItem('midiOutput', name);
+			else localStorage.removeItem('midiOutput');
+		} catch {
+			// not remembered; the current selection still applies
+		}
+	}
+
+	/** The preferred output if it's connected, otherwise all of them. */
+	pickOutputs(available: MIDIOutput[]): MIDIOutput[] {
+		const preferred = this.getPreferredOutput();
+		const match = preferred ? available.filter((o) => o.name === preferred) : [];
+		return match.length > 0 ? match.slice(0, 1) : available;
+	}
+
+	/** Select outputs per the saved preference (used at startup and on Refresh). */
+	async autoSelectOutputs(): Promise<MIDIOutput[]> {
+		const available = await this.getMidiOutputs();
+		this.outputs = this.pickOutputs(available);
+		return available;
 	}
 
 	setOutput(output: MIDIOutput | null) {
@@ -313,6 +347,23 @@ export class MidiPlayer {
 		}
 	}
 
+	/** Scale note-on velocities (0.5–1.5); applies to notes sent from now on. */
+	setVelocityScale(scale: number) {
+		this.velocityScale = Math.max(0.5, Math.min(1.5, scale));
+	}
+
+	/** Release every note and pedal on every output right now (stuck-note emergency button). */
+	panic() {
+		this.allNotesOff();
+		for (const out of this.outputs) {
+			for (let ch = 0; ch < 16; ch++) {
+				out.send([0xB0 | ch, 64, 0]); // sustain up, for devices that ignore CC121
+				out.send([0xB0 | ch, 120, 0]); // All Sound Off
+			}
+		}
+		this.clearActiveNotes();
+	}
+
 	getTempo(): number {
 		return this.tempo;
 	}
@@ -422,8 +473,12 @@ export class MidiPlayer {
 				case 'cc':      return 0xB0 | (event.channel & 0x0f);
 			}
 		})();
+		let data2 = event.data2;
+		if (event.type === 'noteOn' && data2 > 0 && this.velocityScale !== 1) {
+			data2 = Math.max(1, Math.min(127, Math.round(data2 * this.velocityScale)));
+		}
 		for (const out of this.outputs) {
-			out.send([status, event.data1, event.data2], timestamp);
+			out.send([status, event.data1, data2], timestamp);
 		}
 	}
 

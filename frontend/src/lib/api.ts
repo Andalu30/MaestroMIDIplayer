@@ -54,6 +54,14 @@ export async function getTrack(id: number): Promise<Track> {
 	return fetchJson(`/tracks/${id}`);
 }
 
+export async function getRandomTrack(params?: { composer?: string; year?: number }): Promise<Track> {
+	const searchParams = new URLSearchParams();
+	if (params?.composer) searchParams.set('composer', params.composer);
+	if (params?.year) searchParams.set('year', String(params.year));
+	const qs = searchParams.toString();
+	return fetchJson(`/tracks/random${qs ? '?' + qs : ''}`);
+}
+
 export async function getCompetitions(): Promise<CompetitionSummary[]> {
 	return fetchJson('/competitions');
 }
