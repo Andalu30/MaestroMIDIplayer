@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import type { Track } from '#lib/stores.js';
 	import { currentTrack, queue, toasts } from '#lib/stores.js';
-	import { formatDuration } from '#lib/utils.js';
+	import { formatDuration, pieceKey } from '#lib/utils.js';
 
 	interface TrackGroup {
 		title: string;
@@ -41,24 +41,24 @@
 	});
 
 	let groups = $derived.by(() => {
+		// Group recordings of the same piece even when the dataset spells the title differently
 		const map = new Map<string, Track[]>();
 		for (const track of tracks) {
-			// Normalize title: collapse whitespace so "Nocturne  Op. 9" and "Nocturne Op. 9" group together
-			const normalizedTitle = track.title.replace(/\s+/g, ' ').trim();
-			const existing = map.get(normalizedTitle);
+			const key = pieceKey(track.title);
+			const existing = map.get(key);
 			if (existing) {
 				existing.push(track);
 			} else {
-				map.set(normalizedTitle, [track]);
+				map.set(key, [track]);
 			}
 		}
 
 		const result: TrackGroup[] = [];
-		for (const [title, groupTracks] of map) {
+		for (const groupTracks of map.values()) {
 			groupTracks.sort((a, b) => a.year - b.year);
 			const avg = groupTracks.reduce((sum, t) => sum + t.duration, 0) / groupTracks.length;
 			result.push({
-				title,
+				title: mostCommonTitle(groupTracks),
 				tracks: groupTracks,
 				isMulti: groupTracks.length > 1,
 				avgDuration: `~${formatDuration(Math.round(avg))}`,
@@ -68,6 +68,15 @@
 		result.sort((a, b) => a.title.localeCompare(b.title));
 		return result;
 	});
+
+	function mostCommonTitle(groupTracks: Track[]): string {
+		const counts = new Map<string, number>();
+		for (const t of groupTracks) {
+			const title = t.title.replace(/\s+/g, ' ').trim();
+			counts.set(title, (counts.get(title) ?? 0) + 1);
+		}
+		return [...counts].sort((a, b) => b[1] - a[1])[0][0];
+	}
 
 	let flatFromGroups = $derived.by(() => {
 		return groups.flatMap(g => g.tracks);
