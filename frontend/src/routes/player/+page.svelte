@@ -90,8 +90,10 @@
 	</p>
 
 	<!-- Drop zone -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
+		role="button"
+		tabindex="0"
+		aria-label="Choose or drop a MIDI file"
 		class="relative border-2 border-dashed rounded-2xl p-12 text-center transition-colors cursor-pointer
 			   {dragOver
 				? 'border-accent-500 bg-accent-500/5'
@@ -100,6 +102,7 @@
 		ondragover={onDragOver}
 		ondragleave={onDragLeave}
 		onclick={() => fileInputEl.click()}
+		onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputEl.click(); } }}
 	>
 		<input
 			bind:this={fileInputEl}

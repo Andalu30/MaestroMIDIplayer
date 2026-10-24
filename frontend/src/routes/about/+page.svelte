@@ -102,6 +102,7 @@
 						You can still browse the collection. If you want to hear the performances, any software
 						synthesizer that exposes a virtual MIDI port will work — <em>FluidSynth</em>,
 						<em>Pianoteq</em>, your DAW...
+					</p>
 				</div>
 			</div>
 		</section>

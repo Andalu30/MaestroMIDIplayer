@@ -5,6 +5,8 @@
 	import { onMount, tick } from 'svelte';
 
 	let { size = 'sm' }: { size?: 'sm' | 'lg' } = $props();
+	const uid = $props.id();
+	const resultsId = `${uid}-results`;
 
 	// Competition years come from the dataset so the filter never drifts from it
 	let competitionYears = $state<number[]>([]);
@@ -124,6 +126,7 @@
 				   {size === 'lg' ? 'text-base' : 'text-sm'}"
 			role="combobox"
 			aria-expanded={open}
+			aria-controls={resultsId}
 			aria-autocomplete="list"
 		/>
 		<select
@@ -147,6 +150,7 @@
 					border border-surface-200 dark:border-surface-700
 					rounded-xl shadow-xl overflow-hidden"
 			 style={dropdownStyle}
+			 id={resultsId}
 			 role="listbox">
 			{#if searchError}
 				<div class="px-4 py-3 text-sm text-surface-500 dark:text-surface-400">

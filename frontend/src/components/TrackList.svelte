@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { Track } from '#lib/stores.js';
 	import { currentTrack, queue, toasts } from '#lib/stores.js';
 	import { formatDuration } from '#lib/utils.js';
@@ -19,7 +20,8 @@
 
 	let sortField = $state<'title' | 'duration' | 'year' | 'composer'>('title');
 	let sortAsc = $state(true);
-	let viewMode = $state<'grouped' | 'flat'>(allowGrouping ? 'grouped' : 'flat');
+	// allowGrouping only sets the initial mode; the user can toggle afterwards
+	let viewMode = $state<'grouped' | 'flat'>(untrack(() => allowGrouping) ? 'grouped' : 'flat');
 	let expandedGroups = $state<Set<string>>(new Set());
 
 	let sorted = $derived.by(() => {
