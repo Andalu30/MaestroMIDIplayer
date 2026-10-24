@@ -128,9 +128,26 @@
 
 	function copyTrackLink(track: Track) {
 		const url = `${window.location.origin}/composer/${track.composer_slug}#track-${track.id}`;
-		navigator.clipboard.writeText(url).then(() => {
-			toasts.show('Link copied!');
-		});
+		// navigator.clipboard only exists in secure contexts (HTTPS/localhost);
+		// plain-HTTP LAN deployments fall back to the legacy execCommand path.
+		const copy = navigator.clipboard
+			? navigator.clipboard.writeText(url)
+			: new Promise<void>((resolve, reject) => {
+					const ta = document.createElement('textarea');
+					ta.value = url;
+					ta.style.position = 'fixed';
+					ta.style.opacity = '0';
+					document.body.appendChild(ta);
+					ta.select();
+					const ok = document.execCommand('copy');
+					ta.remove();
+					if (ok) resolve();
+					else reject(new Error('copy failed'));
+				});
+		copy.then(
+			() => toasts.show('Link copied!'),
+			() => toasts.show('Could not copy link')
+		);
 	}
 </script>
 
@@ -238,7 +255,7 @@
 					<button
 						onclick={(e) => { e.stopPropagation(); copyTrackLink(track); }}
 						aria-label="Copy link to track"
-						class="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity
+						class="p-1 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 transition-opacity
 							   text-surface-400 hover:text-accent-500"
 					>
 						<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

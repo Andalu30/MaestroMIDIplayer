@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { theme, playerState, toasts } from '$lib/stores';
+	import { theme, playerState, toasts, currentTrack } from '$lib/stores';
 	import { midiPlayer } from '$lib/midi-player';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -23,9 +23,10 @@
 	});
 
 	function handleKeydown(e: KeyboardEvent) {
-		// Ignore shortcuts when typing in an input/textarea
+		// Ignore shortcuts when a form control has focus (Space/arrows belong to it)
 		const tag = (e.target as HTMLElement)?.tagName;
-		if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+		if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag) || (e.target as HTMLElement)?.isContentEditable) return;
+		if (e.altKey || e.repeat || !$currentTrack) return;
 
 		if (e.code === 'Space') {
 			e.preventDefault();

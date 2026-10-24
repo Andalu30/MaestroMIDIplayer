@@ -190,3 +190,4 @@
 		<p class="text-lg font-medium">Competition not found</p>
 		<p class="text-sm mt-1">No competition data found for year {year}.</p>
 	</div>
+{/if}

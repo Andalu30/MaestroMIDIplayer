@@ -121,19 +121,26 @@ async def lifespan(app: FastAPI):
                 logger.warning("Sample MIDI file exists but is NOT readable — MIDI serving will fail")
 
     # Optional image cache warmup
+    warmup_task = None
     if settings.prefetch_images:
         import asyncio
         logger.info("Image cache warmup enabled — pre-fetching %d composer portraits in background", len(store.composers))
         async def _warmup():
             for composer in store.composers:
-                await fetch_composer_image(composer.slug, composer.name)
-        asyncio.create_task(_warmup())
+                try:
+                    await fetch_composer_image(composer.slug, composer.name)
+                except Exception:
+                    logger.warning("Image warmup failed for %s", composer.slug, exc_info=True)
+        # Keep a strong reference: the event loop only holds tasks weakly
+        warmup_task = asyncio.create_task(_warmup())
 
     _startup_time = time.time()
     app.state.startup_time = _startup_time
 
     yield
 
+    if warmup_task is not None:
+        warmup_task.cancel()
     await close_http_client()
 
 

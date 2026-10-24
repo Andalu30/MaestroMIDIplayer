@@ -125,8 +125,15 @@
 			if (e instanceof Error && e.name === 'AbortError') return; // cancelled, no error display
 			console.error('Failed to load MIDI:', e);
 		} finally {
-			loading = false;
+			// A newer load may have superseded this one; let it own the spinner
+			if (loadAbortController?.signal === signal) loading = false;
 		}
+	}
+
+	function cancelLoad() {
+		loadAbortController?.abort();
+		loading = false;
+		currentTrack.set(null); // nothing is loaded, so don't leave a stale track selected
 	}
 
 	function togglePlay() {
@@ -329,7 +336,7 @@
 					class="p-1.5 rounded-full hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-400">
 					<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 				</button>
-				<button onclick={loading ? () => { loadAbortController?.abort(); loading = false; } : togglePlay}
+				<button onclick={loading ? cancelLoad : togglePlay}
 					aria-label={loading ? 'Cancel loading' : $playerState === 'playing' ? 'Pause' : 'Play'}
 					class="p-2 rounded-full bg-accent-500 hover:bg-accent-600 text-white">
 					{#if loading}
@@ -580,7 +587,7 @@
 						   text-surface-600 dark:text-surface-400 transition-colors">
 					<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 				</button>
-				<button onclick={loading ? () => { loadAbortController?.abort(); loading = false; } : togglePlay}
+				<button onclick={loading ? cancelLoad : togglePlay}
 					aria-label={loading ? 'Cancel loading' : $playerState === 'playing' ? 'Pause' : 'Play'}
 					class="p-4 rounded-full bg-accent-500 hover:bg-accent-600 text-white shadow-lg transition-colors">
 					{#if loading}

@@ -185,8 +185,32 @@ class TestMidi:
         res = client.get("/api/midi/tracks/-1/file")
         assert res.status_code == 404
 
-    def test_midi_track_valid_missing_file(self, client):
-        # Track 0 exists in store but its MIDI file won't be on disk in CI
+    def test_midi_track_missing_file(self, client, tmp_path, monkeypatch):
+        from app.core.config import settings
+        monkeypatch.setattr(settings, "dataset_path", tmp_path)
         res = client.get("/api/midi/tracks/0/file")
-        # Either 200 (file found) or 404 (file missing from disk) are acceptable
-        assert res.status_code in (200, 403, 404)
+        assert res.status_code == 404
+
+    def test_midi_track_served(self, client, tmp_path, monkeypatch):
+        from app.core.config import settings
+        from app.data.dataset import store
+        monkeypatch.setattr(settings, "dataset_path", tmp_path)
+        midi = tmp_path / store.tracks[0].midi_filename
+        midi.parent.mkdir(parents=True, exist_ok=True)
+        midi.write_bytes(b"MThd\x00\x00\x00\x06")
+        res = client.get("/api/midi/tracks/0/file")
+        assert res.status_code == 200
+        assert res.headers["content-type"] == "audio/midi"
+        assert res.content.startswith(b"MThd")
+
+    def test_midi_path_traversal_blocked(self, client, tmp_path, monkeypatch):
+        from app.core.config import settings
+        from app.data.dataset import store
+        dataset = tmp_path / "dataset"
+        dataset.mkdir()
+        (tmp_path / "secret.mid").write_bytes(b"secret")
+        monkeypatch.setattr(settings, "dataset_path", dataset)
+        evil = store.tracks[0].model_copy(update={"midi_filename": "../secret.mid"})
+        monkeypatch.setattr(store, "tracks", [evil, *store.tracks[1:]])
+        res = client.get("/api/midi/tracks/0/file")
+        assert res.status_code == 403

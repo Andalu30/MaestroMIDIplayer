@@ -41,7 +41,8 @@ async def get_composer_image(request: Request, slug: str):
 
     # Fallback: SVG placeholder with initials
     svg = generate_placeholder_svg(composer.name)
-    return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=3600"})
+    # Short max-age: a transient Wikipedia failure shouldn't pin the initials for an hour
+    return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=300"})
 
 
 @router.get("/{slug}/tracks")

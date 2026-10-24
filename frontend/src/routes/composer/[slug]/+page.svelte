@@ -13,7 +13,7 @@
 	let imgError = $state(false);
 	let error = $state<string | null>(null);
 
-	const slug = $derived(page.params.slug);
+	const slug = $derived(page.params.slug ?? '');
 
 	$effect(() => {
 		const currentSlug = slug; // track dependency

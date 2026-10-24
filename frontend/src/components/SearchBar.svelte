@@ -1,13 +1,19 @@
 <script lang="ts">
-	import { getTracks } from '$lib/api';
+	import { getTracks, getCompetitions } from '$lib/api';
 	import type { Track } from '$lib/stores';
 	import { goto } from '$app/navigation';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	let { size = 'sm' }: { size?: 'sm' | 'lg' } = $props();
 
-	// MAESTRO dataset competition years
-	const COMPETITION_YEARS = [2004, 2006, 2008, 2009, 2011, 2014, 2015, 2017, 2018];
+	// Competition years come from the dataset so the filter never drifts from it
+	let competitionYears = $state<number[]>([]);
+
+	onMount(() => {
+		getCompetitions()
+			.then((comps) => (competitionYears = comps.map((c) => c.year).sort((a, b) => a - b)))
+			.catch(() => {}); // filter just stays at "All years"
+	});
 
 	let query = $state('');
 	let selectedYear = $state<number | null>(null);
@@ -129,7 +135,7 @@
 			aria-label="Filter by year"
 		>
 			<option value={null}>All years</option>
-			{#each COMPETITION_YEARS as yr}
+			{#each competitionYears as yr}
 				<option value={yr}>{yr}</option>
 			{/each}
 		</select>

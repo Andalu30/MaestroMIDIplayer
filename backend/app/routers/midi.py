@@ -22,7 +22,7 @@ def get_midi_file(track_id: int):
     midi_path = (dataset_root / track.midi_filename).resolve()
 
     # Guard against path traversal via a corrupted CSV entry
-    if not str(midi_path).startswith(str(dataset_root) + "/"):
+    if not midi_path.is_relative_to(dataset_root):
         logger.error("Path traversal attempt blocked for track %d: %s", track_id, midi_path)
         raise HTTPException(status_code=403, detail="Access denied")
 
