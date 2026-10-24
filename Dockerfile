@@ -52,4 +52,6 @@ ENV MAESTRO_PORT=8000
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-sync: the venv was built with --no-dev; a plain `uv run` would install
+# the dev group at every container start (needs network, slows boot)
+CMD ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
