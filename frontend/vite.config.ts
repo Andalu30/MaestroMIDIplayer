@@ -18,6 +18,10 @@ export default defineConfig({
 			}
 		})
 	],
+	define: {
+		// Release tag (e.g. v0.7.1) passed in by the Docker build; 'dev' otherwise
+		__APP_VERSION__: JSON.stringify(process.env.MAESTRO_VERSION || 'dev')
+	},
 	server: {
 		proxy: {
 			'/api': {

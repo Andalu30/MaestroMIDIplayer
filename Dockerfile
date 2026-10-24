@@ -6,6 +6,8 @@ RUN npm ci
 COPY frontend/ ./
 # Placeholder base path, rewritten at container start from MAESTRO_BASE_PATH
 ENV MAESTRO_BUILD_BASE=/__MAESTRO_BASE__
+# Release tag shown in the footer; set by the release workflow
+ARG MAESTRO_VERSION=dev
 RUN npm run build
 
 # Stage 2: Python backend + serve frontend
