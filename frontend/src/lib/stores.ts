@@ -124,6 +124,21 @@ export const queue = writable<Track[]>([]);
 /** Tracks played before the current one, most recent last (for the previous button) */
 export const playHistory = writable<Track[]>([]);
 
+/** What happens when a track ends: stop at the end of the queue, cycle the queue, or loop the track */
+export const repeatMode = persisted<'off' | 'all' | 'one'>('repeatMode', 'off');
+
+/** Playback speed (0.25–2.0); shared so keyboard shortcuts and both player views agree */
+export const tempo = writable<number>(1.0);
+
+/** Note velocity multiplier (0.5–1.5) — softer for late-evening playing, or a little more presence */
+export const velocityScale = persisted<number>('velocityScale', 1.0);
+
+/** Pause at this time (ms epoch), at the end of the current track, or never */
+export const sleepTimer = writable<{ at: number } | 'end-of-track' | null>(null);
+
+/** Keep the screen awake while playing (phones/tablets next to the piano) */
+export const keepScreenOn = persisted<boolean>('keepScreenOn', true);
+
 /** Map of currently active MIDI note numbers to their velocity (0-127) */
 export const activeNotes = writable<Map<number, number>>(new Map());
 

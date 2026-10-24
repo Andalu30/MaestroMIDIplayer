@@ -33,6 +33,7 @@ export class MidiPlayer {
 	private tracks: TrackInfo[] = [];
 	private duration = 0;
 	private tempo = 1.0;
+	private velocityScale = 1.0;
 
 	// Playback state
 	private playing = false;
@@ -346,6 +347,23 @@ export class MidiPlayer {
 		}
 	}
 
+	/** Scale note-on velocities (0.5–1.5); applies to notes sent from now on. */
+	setVelocityScale(scale: number) {
+		this.velocityScale = Math.max(0.5, Math.min(1.5, scale));
+	}
+
+	/** Release every note and pedal on every output right now (stuck-note emergency button). */
+	panic() {
+		this.allNotesOff();
+		for (const out of this.outputs) {
+			for (let ch = 0; ch < 16; ch++) {
+				out.send([0xB0 | ch, 64, 0]); // sustain up, for devices that ignore CC121
+				out.send([0xB0 | ch, 120, 0]); // All Sound Off
+			}
+		}
+		this.clearActiveNotes();
+	}
+
 	getTempo(): number {
 		return this.tempo;
 	}
@@ -455,8 +473,12 @@ export class MidiPlayer {
 				case 'cc':      return 0xB0 | (event.channel & 0x0f);
 			}
 		})();
+		let data2 = event.data2;
+		if (event.type === 'noteOn' && data2 > 0 && this.velocityScale !== 1) {
+			data2 = Math.max(1, Math.min(127, Math.round(data2 * this.velocityScale)));
+		}
 		for (const out of this.outputs) {
-			out.send([status, event.data1, event.data2], timestamp);
+			out.send([status, event.data1, data2], timestamp);
 		}
 	}
 

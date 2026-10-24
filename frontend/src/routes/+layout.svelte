@@ -1,6 +1,8 @@
 <script lang="ts">
 	import '../app.css';
-	import { theme, playerState, toasts, currentTrack } from '#lib/stores.js';
+	import { theme, toasts, currentTrack, tempo } from '#lib/stores.js';
+	import { playNext, playPrevious, setTempo, togglePlayPause, cycleRepeat } from '#lib/playback.js';
+	import ShortcutsHelp from '../components/ShortcutsHelp.svelte';
 	import { midiPlayer } from '#lib/midi-player.js';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -12,6 +14,7 @@
 
 	let { children } = $props();
 	let settingsOpen = $state(false);
+	let shortcutsOpen = $state(false);
 	let mobileMenuOpen = $state(false);
 	let hasMidiOutputs = $state(true); // assume true until checked
 
@@ -26,21 +29,33 @@
 	function handleKeydown(e: KeyboardEvent) {
 		// Ignore shortcuts when a form control has focus (Space/arrows belong to it)
 		const tag = (e.target as HTMLElement)?.tagName;
-		if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag) || (e.target as HTMLElement)?.isContentEditable) return;
-		if (e.altKey || e.repeat || !$currentTrack) return;
+		if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || (e.target as HTMLElement)?.isContentEditable) return;
+		if (tag === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return; // the button's own activation
+		if (e.altKey || e.metaKey || e.ctrlKey) return;
 
-		if (e.code === 'Space') {
+		if (e.key === '?') {
 			e.preventDefault();
-			const state = $playerState;
-			if (state === 'playing') midiPlayer.pause();
-			else if (state === 'paused' || state === 'stopped') midiPlayer.play();
-		} else if (e.code === 'ArrowRight' && !e.metaKey && !e.ctrlKey) {
-			e.preventDefault();
-			midiPlayer.seek(midiPlayer.getPosition() + 5);
-		} else if (e.code === 'ArrowLeft' && !e.metaKey && !e.ctrlKey) {
-			e.preventDefault();
-			midiPlayer.seek(Math.max(0, midiPlayer.getPosition() - 5));
+			shortcutsOpen = !shortcutsOpen;
+			return;
 		}
+		if (!$currentTrack) return;
+
+		const actions: Record<string, () => void> = {
+			' ': togglePlayPause,
+			ArrowRight: () => midiPlayer.seek(midiPlayer.getPosition() + 5),
+			ArrowLeft: () => midiPlayer.seek(Math.max(0, midiPlayer.getPosition() - 5)),
+			n: () => playNext(),
+			p: playPrevious,
+			']': () => setTempo($tempo + 0.05),
+			'[': () => setTempo($tempo - 0.05),
+			'\\': () => setTempo(1),
+			r: cycleRepeat,
+		};
+		const action = actions[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+		// Space must not repeat-toggle; seeking/tempo may repeat while held
+		if (!action || (e.repeat && (e.key === ' ' || e.key.toLowerCase() === 'n' || e.key.toLowerCase() === 'p' || e.key.toLowerCase() === 'r'))) return;
+		e.preventDefault();
+		action();
 	}
 
 	onMount(async () => {
@@ -219,6 +234,8 @@
 
 	<!-- Player -->
 	<PlayerBar />
+
+	<ShortcutsHelp open={shortcutsOpen} onclose={() => shortcutsOpen = false} />
 
 	<!-- Settings -->
 	<SettingsPanel open={settingsOpen} onclose={() => settingsOpen = false} />

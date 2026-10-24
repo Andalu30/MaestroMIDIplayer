@@ -1,13 +1,12 @@
 <script lang="ts">
-	import { currentTrack, playerState, queue, activeNotes, pedalState, showPianoViz, showPedalIndicators, showPedalNames } from '#lib/stores.js';
+	import { currentTrack, playerState, queue, activeNotes, pedalState, showPianoViz, showPedalIndicators, showPedalNames, tempo, repeatMode, sleepTimer } from '#lib/stores.js';
 	import { midiPlayer } from '#lib/midi-player.js';
 	import { formatDuration } from '#lib/utils.js';
-	import { playNext, playPrevious } from '#lib/playback.js';
+	import { playNext, playPrevious, onTrackEnded, setTempo, togglePlayPause, cycleRepeat, shuffleQueue, setSleepTimer, updatePositionState } from '#lib/playback.js';
 	import { onMount, onDestroy } from 'svelte';
 
 	let position = $state(0);
 	let duration = $state(0);
-	let tempo = $state(1.0);
 	let loading = $state(false);
 	let midiSupported = $state(true);
 	let showTempo = $state(false);
@@ -59,8 +58,9 @@
 
 		// Auto-advance to next track when playback ends
 		if (update.state === 'stopped' && loadedTrackId !== null) {
-			playNext();
+			onTrackEnded();
 		}
+		if (update.state !== 'playing') updatePositionState();
 	}
 
 	onMount(async () => {
@@ -128,11 +128,7 @@
 	}
 
 	function togglePlay() {
-		if ($playerState === 'playing') {
-			midiPlayer.pause();
-		} else {
-			midiPlayer.play();
-		}
+		togglePlayPause();
 	}
 
 	function stop() {
@@ -156,21 +152,53 @@
 		const sec = parseFloat(input.value);
 		midiPlayer.seek(sec);
 		position = sec;
+		updatePositionState();
 	}
 
 	function onTempoChange(e: Event) {
 		const input = e.target as HTMLInputElement;
-		tempo = parseFloat(input.value);
-		midiPlayer.setTempo(tempo);
+		setTempo(parseFloat(input.value));
 	}
 
 	function resetTempo() {
-		tempo = 1.0;
-		midiPlayer.setTempo(1.0);
+		setTempo(1.0);
 	}
 
+	function removeFromQueue(index: number) {
+		queue.update((q) => q.filter((_, i) => i !== index));
+	}
+
+	function moveInQueue(index: number, delta: number) {
+		queue.update((q) => {
+			const to = index + delta;
+			if (to < 0 || to >= q.length) return q;
+			const copy = [...q];
+			[copy[index], copy[to]] = [copy[to], copy[index]];
+			return copy;
+		});
+	}
+
+	function playFromQueue(index: number) {
+		// Skip ahead: tracks before it are dropped, like pressing next repeatedly
+		queue.update((q) => q.slice(index));
+		playNext();
+	}
+
+	let queueDuration = $derived($queue.reduce((sum, t) => sum + t.duration, 0));
+
+	// Remaining time on a timed sleep, refreshed every 15 s while one is set
+	let now = $state(Date.now());
+	$effect(() => {
+		if (!$sleepTimer || $sleepTimer === 'end-of-track') return;
+		now = Date.now();
+		const id = setInterval(() => (now = Date.now()), 15_000);
+		return () => clearInterval(id);
+	});
+	let sleepLabel = $derived(
+		!$sleepTimer ? '' : $sleepTimer === 'end-of-track' ? 'end of track' : `${Math.max(1, Math.ceil(($sleepTimer.at - now) / 60_000))} min`
+	);
+
 	let progressPercent = $derived(duration > 0 ? (position / duration) * 100 : 0);
-	let nextInQueue = $derived($queue.length > 0 ? $queue[0] : null);
 
 	// Precompute 88-key piano layout (MIDI 21=A0 to 108=C8)
 	const BLACK_NOTES = new Set([1, 3, 6, 8, 10]); // note-in-octave positions that are black
@@ -373,11 +401,11 @@
 				<button
 					onclick={() => showTempo = !showTempo}
 					class="text-xs px-2 py-1 rounded-md
-						   {tempo !== 1.0 ? 'bg-accent-500/15 text-accent-500' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'}
+						   {$tempo !== 1.0 ? 'bg-accent-500/15 text-accent-500' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'}
 						   transition-colors tabular-nums"
 					aria-label="Tempo"
 				>
-					{tempo.toFixed(2)}x
+					{$tempo.toFixed(2)}x
 				</button>
 				{#if showTempo}
 					<div class="absolute bottom-full right-0 mb-2 p-3 rounded-xl
@@ -393,7 +421,7 @@
 							min="0.25"
 							max="2.0"
 							step="0.05"
-							value={tempo}
+							value={$tempo}
 							oninput={onTempoChange}
 							class="w-full accent-accent-500"
 							aria-label="Tempo slider"
@@ -597,8 +625,8 @@
 				<div class="flex items-center justify-between mb-2">
 					<span class="text-xs text-surface-500 dark:text-surface-400">Tempo</span>
 					<div class="flex items-center gap-2">
-						<span class="text-xs tabular-nums text-surface-500 dark:text-surface-400">{tempo.toFixed(2)}x</span>
-						{#if tempo !== 1.0}
+						<span class="text-xs tabular-nums text-surface-500 dark:text-surface-400">{$tempo.toFixed(2)}x</span>
+						{#if $tempo !== 1.0}
 							<button onclick={resetTempo} class="text-xs text-accent-500 hover:underline">Reset</button>
 						{/if}
 					</div>
@@ -608,7 +636,7 @@
 					min="0.25"
 					max="2.0"
 					step="0.05"
-					value={tempo}
+					value={$tempo}
 					oninput={onTempoChange}
 					class="w-full accent-accent-500"
 					aria-label="Tempo slider"
@@ -618,19 +646,92 @@
 					<span class="absolute left-[42.86%] -translate-x-1/2">1x</span>
 					<span class="absolute right-0">2x</span>
 				</div>
+				<div class="flex items-center justify-between mt-4">
+					<label for="sleep-timer" class="text-xs text-surface-500 dark:text-surface-400">
+						Sleep timer{#if sleepLabel}<span class="text-accent-500"> · {sleepLabel}</span>{/if}
+					</label>
+					<select
+						id="sleep-timer"
+						class="text-xs bg-transparent text-surface-600 dark:text-surface-300 border border-surface-300 dark:border-surface-700 rounded-md px-1.5 py-0.5"
+						value=""
+						onchange={(e) => {
+							const v = e.currentTarget.value;
+							setSleepTimer(v === 'off' ? null : v === 'track' ? 'track' : Number(v));
+							e.currentTarget.value = '';
+						}}
+					>
+						<option value="" disabled>{$sleepTimer ? 'Change…' : 'Set…'}</option>
+						<option value="15">15 minutes</option>
+						<option value="30">30 minutes</option>
+						<option value="45">45 minutes</option>
+						<option value="60">1 hour</option>
+						<option value="track">End of this piece</option>
+						{#if $sleepTimer}<option value="off">Cancel timer</option>{/if}
+					</select>
+				</div>
 			</div>
 		</div>
 
-		<!-- Up next -->
-		{#if nextInQueue}
-			<div class="shrink-0 px-6 sm:px-8 pb-6 sm:pb-8">
-				<div class="max-w-md mx-auto p-3 rounded-xl bg-surface-100 dark:bg-surface-900
-							border border-surface-200 dark:border-surface-800">
-					<p class="text-xs text-surface-400 mb-1 uppercase tracking-wider">Up next</p>
-					<p class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{nextInQueue.title}</p>
-					<p class="text-xs text-surface-500 dark:text-surface-400 truncate">{nextInQueue.composer}</p>
+		<!-- Queue -->
+		<div class="shrink-0 px-4 sm:px-8 pb-4 sm:pb-6">
+			<div class="max-w-md mx-auto rounded-xl bg-surface-100 dark:bg-surface-900
+						border border-surface-200 dark:border-surface-800">
+				<div class="flex items-center gap-1 px-3 py-2">
+					<p class="text-xs text-surface-400 uppercase tracking-wider flex-1">
+						Up next{#if $queue.length > 0}{' · '}{$queue.length} · {formatDuration(queueDuration)}{/if}
+					</p>
+					<button onclick={cycleRepeat}
+						aria-label="Repeat: {$repeatMode}"
+						title="Repeat: {$repeatMode === 'off' ? 'off' : $repeatMode === 'all' ? 'queue' : 'this track'}"
+						class="relative p-1.5 rounded-full transition-colors
+							   {$repeatMode !== 'off' ? 'text-accent-500 bg-accent-500/10' : 'text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'}">
+						<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 01-4 4H3"/>
+						</svg>
+						{#if $repeatMode === 'one'}<span class="absolute -top-0.5 -right-0.5 text-[9px] font-bold">1</span>{/if}
+					</button>
+					<button onclick={shuffleQueue} disabled={$queue.length < 2}
+						aria-label="Shuffle queue" title="Shuffle queue"
+						class="p-1.5 rounded-full text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 disabled:opacity-30 transition-colors">
+						<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>
+						</svg>
+					</button>
+					{#if $queue.length > 0}
+						<button onclick={() => queue.set([])} class="text-xs text-surface-400 hover:text-accent-500 px-1.5">Clear</button>
+					{/if}
 				</div>
+				{#if $queue.length > 0}
+					<ol class="max-h-40 sm:max-h-56 overflow-y-auto border-t border-surface-200 dark:border-surface-800">
+						{#each $queue as track, i (track.id + ':' + i)}
+							<li class="flex items-center gap-1 pl-3 pr-1 py-1 group/q hover:bg-surface-200/50 dark:hover:bg-surface-800/50">
+								<button class="flex-1 min-w-0 text-left py-0.5" onclick={() => playFromQueue(i)} title="Play now">
+									<p class="text-sm text-surface-900 dark:text-surface-100 truncate">{track.title}</p>
+									<p class="text-xs text-surface-500 dark:text-surface-400 truncate">{track.composer} · {track.year}</p>
+								</button>
+								<div class="flex items-center opacity-0 group-hover/q:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100 transition-opacity">
+									<button onclick={() => moveInQueue(i, -1)} disabled={i === 0} aria-label="Move up"
+										class="p-1 text-surface-400 hover:text-accent-500 disabled:opacity-30">
+										<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 15l7-7 7 7"/></svg>
+									</button>
+									<button onclick={() => moveInQueue(i, 1)} disabled={i === $queue.length - 1} aria-label="Move down"
+										class="p-1 text-surface-400 hover:text-accent-500 disabled:opacity-30">
+										<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg>
+									</button>
+									<button onclick={() => removeFromQueue(i)} aria-label="Remove from queue"
+										class="p-1 text-surface-400 hover:text-red-500">
+										<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+									</button>
+								</div>
+							</li>
+						{/each}
+					</ol>
+				{:else}
+					<p class="px-3 pb-3 text-xs text-surface-400">
+						{$repeatMode === 'one' ? 'Repeating this track.' : 'Nothing queued — playback stops after this piece.'}
+					</p>
+				{/if}
 			</div>
-		{/if}
+		</div>
 	</div>
 {/if}

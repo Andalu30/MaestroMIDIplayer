@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { showPianoViz, showPedalIndicators, showPedalNames } from '#lib/stores.js';
+	import { showPianoViz, showPedalIndicators, showPedalNames, velocityScale, keepScreenOn, toasts } from '#lib/stores.js';
 	import { midiPlayer } from '#lib/midi-player.js';
 	import { onMount } from 'svelte';
 
@@ -63,7 +63,7 @@
 		tabindex="-1"
 	>
 		<div class="bg-surface-50 dark:bg-surface-900 rounded-2xl shadow-2xl
-					w-full max-w-md mx-4 p-6">
+					w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
 			<div class="flex items-center justify-between mb-6">
 				<h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Settings</h2>
 				<button onclick={onclose} aria-label="Close settings"
@@ -127,6 +127,49 @@
 						{/each}
 					</div>
 				{/if}
+			</div>
+
+			<!-- Playback -->
+			<div class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700 space-y-3">
+				<span class="text-sm font-medium text-surface-700 dark:text-surface-300 block">Playback</span>
+				<div>
+					<div class="flex items-center justify-between mb-1">
+						<label for="velocity-scale" class="text-sm text-surface-700 dark:text-surface-300">Dynamics</label>
+						<span class="text-xs tabular-nums text-surface-500">
+							{Math.round($velocityScale * 100)}%
+							{#if $velocityScale !== 1}
+								<button onclick={() => velocityScale.set(1)} class="ml-1 text-accent-500 hover:underline">Reset</button>
+							{/if}
+						</span>
+					</div>
+					<input id="velocity-scale" type="range" min="0.5" max="1.5" step="0.05"
+						bind:value={$velocityScale} class="w-full accent-accent-500" />
+					<p class="text-xs text-surface-400">Scales how hard each key is struck — lower for quiet evenings.</p>
+				</div>
+				{#if 'wakeLock' in navigator}
+					<div class="flex items-center justify-between">
+						<span class="text-sm text-surface-700 dark:text-surface-300">Keep screen on while playing</span>
+						<button
+							onclick={() => keepScreenOn.update(v => !v)}
+							class="relative w-10 h-6 rounded-full transition-colors
+								   {$keepScreenOn ? 'bg-accent-500' : 'bg-surface-300 dark:bg-surface-600'}"
+							role="switch"
+							aria-checked={$keepScreenOn}
+							aria-label="Keep screen on while playing"
+						>
+							<span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform
+								   {$keepScreenOn ? 'translate-x-4' : 'translate-x-0'}"></span>
+						</button>
+					</div>
+				{/if}
+				<div class="flex items-center justify-between">
+					<span class="text-sm text-surface-700 dark:text-surface-300">Stuck notes?</span>
+					<button
+						onclick={() => { midiPlayer.panic(); toasts.show('All notes released'); }}
+						class="text-xs px-3 py-1 rounded-full border border-surface-300 dark:border-surface-600
+							   text-surface-600 dark:text-surface-300 hover:border-red-500 hover:text-red-500 transition-colors"
+					>Release all notes</button>
+				</div>
 			</div>
 
 			<!-- Visualization -->
