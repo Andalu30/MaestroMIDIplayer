@@ -15,9 +15,10 @@
 	onMount(() => {
 		if (!navigator.requestMIDIAccess) {
 			midiSupported = false;
-		} else {
-			refreshClientPorts();
+			return;
 		}
+		refreshClientPorts();
+		return midiPlayer.onOutputsChange(() => refreshClientPorts());
 	});
 
 	async function refreshClientPorts() {
@@ -150,6 +151,7 @@
 								   {$showPianoViz ? 'bg-accent-500' : 'bg-surface-300 dark:bg-surface-600'}"
 							role="switch"
 							aria-checked={$showPianoViz}
+							aria-label="Piano Visualizer"
 						>
 							<span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform
 								   {$showPianoViz ? 'translate-x-4' : 'translate-x-0'}"></span>
@@ -163,6 +165,7 @@
 								   {$showPedalIndicators ? 'bg-accent-500' : 'bg-surface-300 dark:bg-surface-600'}"
 							role="switch"
 							aria-checked={$showPedalIndicators}
+							aria-label="Pedal Indicators"
 						>
 							<span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform
 								   {$showPedalIndicators ? 'translate-x-4' : 'translate-x-0'}"></span>
@@ -176,6 +179,7 @@
 								   {$showPedalNames ? 'bg-accent-500' : 'bg-surface-300 dark:bg-surface-600'}"
 							role="switch"
 							aria-checked={$showPedalNames}
+							aria-label="Pedal Names"
 						>
 							<span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform
 								   {$showPedalNames ? 'translate-x-4' : 'translate-x-0'}"></span>

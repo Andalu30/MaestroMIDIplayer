@@ -17,6 +17,18 @@ services:
       - MAESTRO_ENV=production
       # Set MAESTRO_CORS_ORIGINS to your deployment domain, e.g.:
       # - MAESTRO_CORS_ORIGINS=["https://midi.example.com"]
+      # Serve from a subfolder behind a reverse proxy (https://host/midi/):
+      # - MAESTRO_BASE_PATH=/midi
+      # Behind a reverse proxy, trust its X-Forwarded-For for per-client rate
+      # limiting (its IP/CIDR, or * if port 8000 isn't published directly):
+      # - FORWARDED_ALLOW_IPS=172.18.0.0/16
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # First boot downloads the dataset before the server starts
+      start_period: 10m
     restart: unless-stopped
 
 volumes:

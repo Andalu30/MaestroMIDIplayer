@@ -9,7 +9,13 @@ export default defineConfig({
 		tailwindcss(),
 		sveltekit({
 			preprocess: vitePreprocess(),
-			adapter: adapter({ pages: 'build', assets: 'build', fallback: 'index.html' })
+			adapter: adapter({ pages: 'build', assets: 'build', fallback: 'index.html' }),
+			// Docker builds with a placeholder base that the backend rewrites at
+			// startup from MAESTRO_BASE_PATH (subfolder hosting); local builds use root
+			paths: {
+				base: (process.env.MAESTRO_BUILD_BASE ?? '') as '' | `/${string}`,
+				relative: false
+			}
 		})
 	],
 	server: {

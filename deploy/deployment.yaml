@@ -1,0 +1,114 @@
+# MaestroMIDIplayer Deployment — works on plain Kubernetes and on OpenShift
+# (restricted-v2 SCC). Apply the whole directory: `kubectl apply -k deploy/`.
+#
+# CD via Keel (https://keel.sh): Keel polls GHCR and rolls out newer release
+# tags. Keel compares semver tags, so the image must be pinned to a version
+# (not :latest); the release workflow publishes X.Y.Z, X.Y and latest.
+# If the GHCR package is private, create a pull secret and uncomment
+# imagePullSecrets below:
+#   kubectl create secret docker-registry ghcr-secret \
+#     --docker-server=ghcr.io --docker-username=<user> --docker-password=<token>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maestro-midi-player
+  labels:
+    app: maestro-midi-player
+  annotations:
+    # "all": update on any higher semver tag (0.x minor releases included).
+    # Narrower options: "major", "minor", "patch", "glob:0.*".
+    keel.sh/policy: all
+    keel.sh/trigger: poll
+    keel.sh/pollSchedule: "@every 24h"
+spec:
+  replicas: 1
+  # The dataset PVC is ReadWriteOnce: stop the old pod before starting the new one
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: maestro-midi-player
+  template:
+    metadata:
+      labels:
+        app: maestro-midi-player
+    spec:
+      # OpenShift injects an arbitrary UID from the namespace range, so runAsUser
+      # is deliberately unset. supplementalGroups: [0] keeps GID 0, which owns
+      # the image files (chmod g=u).
+      securityContext:
+        runAsNonRoot: true
+        supplementalGroups:
+          - 0
+      # imagePullSecrets:
+      #   - name: ghcr-secret
+      containers:
+        - name: maestro-midi-player
+          image: ghcr.io/andalu30/maestromidiplayer:0.5.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: MAESTRO_ENV
+              value: "production"
+            - name: MAESTRO_DATASET_PATH
+              value: "/data"
+            - name: MAESTRO_IMAGE_CACHE_DIR
+              value: "/app/backend/.cache/composer_images"
+            # Traffic only arrives through the ingress/router, so trust its
+            # X-Forwarded-For for per-client rate limiting.
+            - name: FORWARDED_ALLOW_IPS
+              value: "*"
+            # Serve from a subfolder, e.g. https://example.com/midi/
+            # (also set the Route `path:` / Ingress path accordingly)
+            # - name: MAESTRO_BASE_PATH
+            #   value: "/midi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: dataset
+              mountPath: /data
+            - name: composer-cache
+              mountPath: /app/backend/.cache/composer_images
+          # First boot downloads and extracts the dataset before the port opens;
+          # allow up to 10 minutes before liveness checks take over.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: dataset
+          persistentVolumeClaim:
+            claimName: maestro-dataset-pvc
+        - name: composer-cache
+          # Portraits are re-fetched from Wikipedia after a restart; use a PVC
+          # instead if you want the cache to persist.
+          emptyDir: {}

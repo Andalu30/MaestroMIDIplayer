@@ -1,3 +1,5 @@
+# Dataset volume. The MAESTRO v3.0.0 MIDI archive is ~60 MB (~85 MB extracted),
+# so 3Gi is generous; it's kept at 3Gi because a PVC can't be shrunk in place.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -9,8 +11,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      # MAESTRO v3.0.0 MIDI-only archive is ~1.4 GB; the extracted dataset
-      # including the CSV is roughly 1.5 GB.
       storage: 3Gi
-  # Uncomment and set to a StorageClass available in your cluster:
   # storageClassName: standard

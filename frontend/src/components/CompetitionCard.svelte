@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { CompetitionSummary } from '#lib/stores.js';
+	import { resolve } from '$app/paths';
 
 	let { competition }: { competition: CompetitionSummary } = $props();
 
@@ -7,7 +8,7 @@
 </script>
 
 <a
-	href="/competition/{competition.year}"
+	href={resolve('/competition/[year]', { year: String(competition.year) })}
 	class="group flex flex-col gap-3 p-5 rounded-2xl
 		   bg-surface-100 dark:bg-surface-850
 		   hover:bg-surface-200 dark:hover:bg-surface-700

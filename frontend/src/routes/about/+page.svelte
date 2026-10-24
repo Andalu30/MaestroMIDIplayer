@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { resolve } from '$app/paths';
+</script>
+
 <svelte:head>
 	<title>About — maestroMIDIplayer</title>
 </svelte:head>
@@ -102,6 +106,7 @@
 						You can still browse the collection. If you want to hear the performances, any software
 						synthesizer that exposes a virtual MIDI port will work — <em>FluidSynth</em>,
 						<em>Pianoteq</em>, your DAW...
+					</p>
 				</div>
 			</div>
 		</section>
@@ -109,7 +114,7 @@
 		<section id="standalone">
 			<h2 class="text-lg font-semibold text-surface-800 dark:text-surface-200 mb-3">Standalone player</h2>
 			<p>
-				The <a href="/player" class="text-accent-500 hover:underline">Standalone Player</a> page
+				The <a href={resolve('/player')} class="text-accent-500 hover:underline">Standalone Player</a> page
 				lets you play any MIDI file from your computer — not just the MAESTRO dataset. Drag and
 				drop a <code class="text-xs px-1 py-0.5 rounded bg-surface-100 dark:bg-surface-800">.mid</code> file
 				onto the page and it loads and plays through your connected piano using the same engine

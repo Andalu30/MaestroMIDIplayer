@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Composer } from '#lib/stores.js';
 	import { composerImageUrl } from '#lib/api.js';
+	import { resolve } from '$app/paths';
 
 	let { composer }: { composer: Composer } = $props();
 
@@ -12,7 +13,7 @@
 </script>
 
 <a
-	href="/composer/{composer.slug}"
+	href={resolve('/composer/[slug]', { slug: composer.slug })}
 	class="group flex flex-col items-center gap-3 p-4 rounded-2xl
 		   bg-surface-100 dark:bg-surface-850
 		   hover:bg-surface-200 dark:hover:bg-surface-700

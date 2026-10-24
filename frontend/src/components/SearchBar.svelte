@@ -2,9 +2,12 @@
 	import { getTracks, getCompetitions } from '#lib/api.js';
 	import type { Track } from '#lib/stores.js';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 
 	let { size = 'sm' }: { size?: 'sm' | 'lg' } = $props();
+	const uid = $props.id();
+	const resultsId = `${uid}-results`;
 
 	// Competition years come from the dataset so the filter never drifts from it
 	let competitionYears = $state<number[]>([]);
@@ -73,7 +76,7 @@
 		query = '';
 		results = [];
 		selectedIndex = -1;
-		goto(`/composer/${track.composer_slug}#track-${track.id}`);
+		goto(`${resolve('/composer/[slug]', { slug: track.composer_slug })}#track-${track.id}`);
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -124,6 +127,7 @@
 				   {size === 'lg' ? 'text-base' : 'text-sm'}"
 			role="combobox"
 			aria-expanded={open}
+			aria-controls={resultsId}
 			aria-autocomplete="list"
 		/>
 		<select
@@ -147,6 +151,7 @@
 					border border-surface-200 dark:border-surface-700
 					rounded-xl shadow-xl overflow-hidden"
 			 style={dropdownStyle}
+			 id={resultsId}
 			 role="listbox">
 			{#if searchError}
 				<div class="px-4 py-3 text-sm text-surface-500 dark:text-surface-400">
