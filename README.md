@@ -79,17 +79,17 @@ The image is built to comply with OpenShift's **restricted / restricted-v2 SCC**
 
 ```bash
 # Create the dataset PVC first
-oc apply -f openshift/pvc.yaml
+oc apply -f pvc.yaml
 
 # Deploy the application (edit image: field first)
-oc apply -f openshift/deployment.yaml
-oc apply -f openshift/service.yaml
-oc apply -f openshift/route.yaml
+oc apply -f deployment.yaml
+oc apply -f service.yaml
+oc apply -f route.yaml
 ```
 
-The `openshift/` directory also contains a `route.yaml` with TLS edge termination. Set the `host:` field or remove it to let OpenShift auto-generate a hostname.
+`route.yaml` uses TLS edge termination. Set the `host:` field or remove it to let OpenShift auto-generate a hostname.
 
-> **Dataset auto-download**: the first startup downloads MAESTRO v3.0.0 (~1.4 GB) into the PVC. The PVC request is 3 Gi to leave headroom. If your cluster lacks egress access to Google Cloud Storage, pre-populate the PVC and set `MAESTRO_AUTO_DOWNLOAD_DATASET=false`.
+> **Dataset auto-download**: the first startup downloads the MAESTRO v3.0.0 MIDI archive (~60 MB, ~85 MB extracted) into the PVC; the 3 Gi request is generous. If your cluster lacks egress access to Google Cloud Storage, pre-populate the PVC and set `MAESTRO_AUTO_DOWNLOAD_DATASET=false`.
 
 ### Production (without Docker)
 
@@ -113,12 +113,12 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 | `MAESTRO_DATASET_PATH` | `../MaestroDataset` | Path to the MAESTRO dataset directory |
 | `MAESTRO_AUTO_DOWNLOAD_DATASET` | `true` | Download and extract dataset automatically when CSV is missing |
 | `MAESTRO_DATASET_DOWNLOAD_URL` | `https://storage.googleapis.com/magentadata/datasets/maestro/v3.0.0/maestro-v3.0.0-midi.zip` | Dataset ZIP URL used for auto-download |
-| `MAESTRO_DATASET_DOWNLOAD_TIMEOUT_SECONDS` | `1800` | Timeout for dataset ZIP download |
+| `MAESTRO_DATASET_DOWNLOAD_TIMEOUT_SECONDS` | `10` | Per-socket-operation timeout (connect / each read) for the dataset download, not a total cap |
 | `MAESTRO_IMAGE_CACHE_DIR` | `.cache/composer_images` | Cache directory for composer portraits |
 | `MAESTRO_HOST` | `0.0.0.0` | Server bind address |
 | `MAESTRO_PORT` | `8000` | Server port |
 | `MAESTRO_ENV` | `development` | Set to `production` to disable the API docs UI |
-| `MAESTRO_CORS_ORIGINS` | `["http://localhost:5173","http://localhost:8000"]` | JSON list of allowed origins |
+| `MAESTRO_CORS_ORIGINS` | `["https://midi.andalu30.me","http://localhost:8000"]` | JSON list of allowed origins (only needed for cross-origin API use; the bundled SPA is same-origin) |
 
 ## API
 
@@ -133,8 +133,6 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 | GET | `/api/competitions` | Competition years with round/session summaries |
 | GET | `/api/competitions/{year}` | Full year data with rounds, sessions, tracks |
 | GET | `/api/midi/tracks/{id}/file` | Raw MIDI file download |
-| GET | `/api/midi/ports` | Available server-side MIDI output ports |
-| WS | `/api/playback` | Server-side playback control (play, pause, stop, seek, tempo) |
 
 ## Project Structure
 

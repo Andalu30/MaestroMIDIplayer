@@ -25,7 +25,7 @@ docker compose up --build   # Multi-stage build, serves both API + frontend on :
 
 | Component | Tech | Purpose |
 |-----------|------|---------|
-| **Backend** | Python 3.12+ / FastAPI / uv | API routes, CSV→memory load, composer image caching, server-side MIDI |
+| **Backend** | Python 3.12+ / FastAPI / uv | API routes, CSV→memory load, composer image caching, MIDI file serving |
 | **Frontend** | SvelteKit 3 / Svelte 5 / Tailwind 4 | Browse composers/competitions, player UI, Web MIDI playback |
 | **Data** | CSV (no database) | MAESTRO dataset loaded entirely at startup into `store` |
 | **Deployment** | Docker (multi-stage) | Node build → Python image, static frontend mounted |
@@ -93,7 +93,7 @@ frontend/src/
 | `MAESTRO_HOST` | `0.0.0.0` | — |
 | `MAESTRO_PORT` | `8000` | — |
 | `MAESTRO_ENV` | `development` | `production` (disables `/docs`, `/redoc`, `/openapi.json`) |
-| `MAESTRO_CORS_ORIGINS` | `["http://localhost:5173","http://localhost:8000"]` | `["https://midi.example.com"]` |
+| `MAESTRO_CORS_ORIGINS` | `["https://midi.andalu30.me","http://localhost:8000"]` | `["https://midi.example.com"]` |
 | `MAESTRO_UID` / `MAESTRO_GID` | None | `1000` (Docker permission switching) |
 
 ### Frontend Config
@@ -115,7 +115,6 @@ GET    /api/composers                     # All composers with stats
 GET    /api/composers/{slug}/image        # Cached composer portrait (or SVG placeholder)
 GET    /api/competitions/{year}           # Full competition data (rounds, sessions, tracks)
 GET    /api/midi/tracks/{id}/file         # Raw MIDI download
-WS     /api/playback                      # Server-side playback control (WebSocket)
 ```
 
 ## Development Tips
