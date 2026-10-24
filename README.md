@@ -16,8 +16,13 @@ A web app for browsing and playing the [MAESTRO v3.0.0](https://magenta.tensorfl
 - **Client-side MIDI playback** — streams MIDI events to any connected output via the Web MIDI API
 - **Live piano visualization** — 88-key display in the player bar lights up with active notes in real time
 - **Search** — full-text search across composers and piece titles
-- **Transport controls** — play, pause, stop, seek, tempo adjustment (0.25x–2.0x), auto-advance queue
-- **Dark/light theme** — dark by default, persisted in localStorage
+- **Transport controls** — play, pause, stop, seek, tempo adjustment (0.25x–2.0x), previous/next with play history
+- **Queue** — view, reorder and remove upcoming tracks; "Play next" / "Add to queue" on any track; repeat (queue or track) and shuffle
+- **Sleep timer and dynamics** — pause after 15–60 min or at the end of the piece; scale key velocity 50–150% for quiet playing
+- **Media keys and lock screen** — Media Session integration (headset/Bluetooth buttons, OS media controls) and an optional screen wake lock while playing
+- **Library** — favourites and recently played, kept in the browser; full search results page; "Surprise me" random piece
+- **Keyboard shortcuts** — Space, ←/→, N/P, [ ] tempo, R repeat; press ? for the list
+- **Dark/light theme** — follows the OS until toggled, persisted in localStorage; settings and the chosen MIDI output are remembered too
 - **All-outputs mode** — sends MIDI to every available output simultaneously (no manual device selection needed)
 - **Single-container Docker deployment** — multi-stage build, one image serves everything
 
@@ -155,6 +160,7 @@ All settings use the `MAESTRO_` prefix and can be set as environment variables:
 |---|---|---|
 | GET | `/api/health` | Health check with track/composer/year counts |
 | GET | `/api/tracks` | List tracks (query: `?q=`, `?composer=`, `?year=`, `?sort=`, `?order=`) |
+| GET | `/api/tracks/random` | Random track (optional `composer` slug, `year`) |
 | GET | `/api/tracks/{id}` | Single track by ID |
 | GET | `/api/composers` | List composers with piece counts and durations |
 | GET | `/api/composers/{slug}/image` | Composer portrait (Wikipedia or SVG placeholder) |

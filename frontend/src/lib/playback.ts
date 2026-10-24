@@ -1,10 +1,11 @@
 import { get } from 'svelte/store';
 import { browser } from '$app/env';
-import { currentTrack, queue, playHistory, playerState, repeatMode, tempo, velocityScale, sleepTimer, keepScreenOn, toasts, type Track } from './stores';
+import { currentTrack, queue, playHistory, favorites, recentlyPlayed, playerState, repeatMode, tempo, velocityScale, sleepTimer, keepScreenOn, toasts, type Track } from './stores';
 import { composerImageUrl } from './api';
 import { midiPlayer } from './midi-player';
 
 const HISTORY_LIMIT = 100;
+const RECENT_LIMIT = 50;
 let lastTrack: Track | null = null;
 let goingBack = false;
 
@@ -18,7 +19,19 @@ if (browser) {
 		}
 		goingBack = false;
 		lastTrack = track;
+		if (track && track.id >= 0) {
+			recentlyPlayed.update((r) => [track, ...r.filter((t) => t.id !== track.id)].slice(0, RECENT_LIMIT));
+		}
 	});
+}
+
+export function isFavorite(list: Track[], track: Track): boolean {
+	return list.some((t) => t.id === track.id);
+}
+
+export function toggleFavorite(track: Track) {
+	if (track.id < 0) return;
+	favorites.update((f) => (isFavorite(f, track) ? f.filter((t) => t.id !== track.id) : [track, ...f]));
 }
 
 /** Start `tracks[index]` and queue the rest after it. */

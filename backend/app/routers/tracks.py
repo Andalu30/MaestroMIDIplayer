@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from ..data.dataset import store
-from ..data.models import PaginatedTracks
+from ..data.models import PaginatedTracks, Track
 
 router = APIRouter(prefix="/api/tracks", tags=["tracks"])
 
@@ -17,6 +17,18 @@ def list_tracks(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of results to return"),
 ):
     return store.search(q=q, composer=composer, year=year, sort=sort, order=order, skip=skip, limit=limit)
+
+
+@router.get("/random", response_model=Track)
+def random_track(
+    composer: str | None = Query(None, max_length=100, description="Pick from this composer slug only"),
+    year: int | None = Query(None, ge=2000, le=2030, description="Pick from this year only"),
+):
+    """A random track, optionally limited to a composer and/or year ("Surprise me")."""
+    track = store.random_track(composer=composer, year=year)
+    if not track:
+        raise HTTPException(status_code=404, detail="No tracks match")
+    return track
 
 
 @router.get("/{track_id}")

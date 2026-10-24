@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { currentTrack, playerState, queue, activeNotes, pedalState, showPianoViz, showPedalIndicators, showPedalNames, tempo, repeatMode, sleepTimer } from '#lib/stores.js';
+	import { favorites, currentTrack, playerState, queue, activeNotes, pedalState, showPianoViz, showPedalIndicators, showPedalNames, tempo, repeatMode, sleepTimer } from '#lib/stores.js';
 	import { midiPlayer } from '#lib/midi-player.js';
 	import { formatDuration } from '#lib/utils.js';
-	import { playNext, playPrevious, onTrackEnded, setTempo, togglePlayPause, cycleRepeat, shuffleQueue, setSleepTimer, updatePositionState } from '#lib/playback.js';
+	import { playNext, playPrevious, onTrackEnded, setTempo, togglePlayPause, cycleRepeat, shuffleQueue, setSleepTimer, updatePositionState, toggleFavorite, isFavorite } from '#lib/playback.js';
 	import { onMount, onDestroy } from 'svelte';
 
 	let position = $state(0);
@@ -545,8 +545,18 @@
 				<h2 class="text-xl sm:text-2xl font-bold text-surface-900 dark:text-surface-100 mb-2 line-clamp-2">
 					{$currentTrack.title}
 				</h2>
-				<p class="text-base sm:text-lg text-surface-500 dark:text-surface-400">
+				<p class="text-base sm:text-lg text-surface-500 dark:text-surface-400 inline-flex items-center gap-2">
 					{$currentTrack.composer}
+					{#if $currentTrack.id >= 0}
+						{@const fav = isFavorite($favorites, $currentTrack)}
+						<button onclick={() => $currentTrack && toggleFavorite($currentTrack)}
+							aria-label={fav ? 'Remove from favourites' : 'Add to favourites'} aria-pressed={fav}
+							class="p-1 rounded-full {fav ? 'text-accent-500' : 'text-surface-400 hover:text-accent-500'} transition-colors">
+							<svg class="w-5 h-5" fill={fav ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path d="M12 21s-7-4.35-9.5-8.5C.5 9 2.5 5 6.5 5c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3 4 0 6 4 4 7.5C19 16.65 12 21 12 21z"/>
+							</svg>
+						</button>
+					{/if}
 				</p>
 				<div class="flex items-center justify-center gap-2 mt-2 text-xs text-surface-400">
 					<span>{$currentTrack.year}</span>

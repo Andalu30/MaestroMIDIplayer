@@ -2,6 +2,7 @@
 
 import csv
 import logging
+import random
 from collections import defaultdict
 from pathlib import Path
 
@@ -26,6 +27,8 @@ class DatasetStore:
         self.by_year: dict[int, list[Track]] = defaultdict(list)
         self.composers: list[Composer] = []
         self._composer_map: dict[str, Composer] = {}
+        self._tracks_by_slug: dict[str, list[Track]] = {}
+        self._competitions: dict[int, CompetitionYear] = {}
 
     def load(self, csv_path: Path) -> None:
         with open(csv_path, newline="", encoding="utf-8") as f:
@@ -67,6 +70,11 @@ class DatasetStore:
             reverse=True,
         )
         self._composer_map = {c.slug: c for c in self.composers}
+        # On a slug collision the first composer's tracks win (a warning is logged below)
+        for composer_name, tracks in self.by_composer.items():
+            self._tracks_by_slug.setdefault(_make_slug(composer_name), tracks)
+        # The dataset is immutable after load, so build each year's structure once
+        self._competitions = {year: self._build_competition(year) for year in sorted(self.by_year)}
 
         # Warn if any two composer names mapped to the same slug (data loss risk)
         slug_to_names: dict[str, list[str]] = defaultdict(list)
@@ -85,10 +93,13 @@ class DatasetStore:
         return self._composer_map.get(slug)
 
     def get_composer_tracks(self, slug: str) -> list[Track]:
-        for composer_name, tracks in self.by_composer.items():
-            if _make_slug(composer_name) == slug:
-                return tracks
-        return []
+        return self._tracks_by_slug.get(slug, [])
+
+    def random_track(self, composer: str | None = None, year: int | None = None) -> Track | None:
+        pool = self.get_composer_tracks(composer) if composer else self.tracks
+        if year:
+            pool = [t for t in pool if t.year == year]
+        return random.choice(pool) if pool else None
 
     def search(
         self,
@@ -103,7 +114,7 @@ class DatasetStore:
         results = self.tracks
 
         if composer:
-            results = [t for t in results if _make_slug(t.composer) == composer]
+            results = self.get_composer_tracks(composer)
 
         if year:
             results = [t for t in results if t.year == year]
@@ -132,6 +143,9 @@ class DatasetStore:
         return PaginatedTracks(total=total, skip=skip, limit=limit, items=results[skip : skip + limit])
 
     def get_competition(self, year: int) -> CompetitionYear | None:
+        return self._competitions.get(year)
+
+    def _build_competition(self, year: int) -> CompetitionYear | None:
         tracks = self.by_year.get(year)
         if not tracks:
             return None
@@ -171,11 +185,7 @@ class DatasetStore:
         )
 
     def get_competitions(self) -> list[CompetitionYear]:
-        return [
-            self.get_competition(year)
-            for year in sorted(self.by_year.keys())
-            if self.get_competition(year) is not None
-        ]
+        return [c for c in self._competitions.values() if c is not None]
 
 
 # Singleton instance

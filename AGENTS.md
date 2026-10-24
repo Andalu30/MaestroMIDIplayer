@@ -48,8 +48,9 @@ backend/app/
 
 frontend/src/
   lib/api.ts              → Typed fetch wrapper (backend API client)
-  lib/stores.ts           → Svelte stores (theme, player state, queue, MIDI viz)
+  lib/stores.ts           → Svelte stores (theme, player state, queue, MIDI viz) + persisted() localStorage helper
   lib/midi-player.ts      → Web MIDI API playback engine
+  lib/playback.ts         → Queue/history/repeat logic, sleep timer, favourites, Media Session + wake lock
   lib/utils.ts            → Helpers (format duration, etc.)
   components/             → Reusable Svelte components (PlayerBar, ComposerCard, etc.)
   routes/                 → SvelteKit pages (file-based routing)

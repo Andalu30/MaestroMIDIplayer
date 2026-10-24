@@ -124,6 +124,12 @@ export const queue = writable<Track[]>([]);
 /** Tracks played before the current one, most recent last (for the previous button) */
 export const playHistory = writable<Track[]>([]);
 
+/** Tracks starred by the user (this browser only) */
+export const favorites = persisted<Track[]>('favorites', []);
+
+/** Most recently started tracks first, de-duplicated */
+export const recentlyPlayed = persisted<Track[]>('recentlyPlayed', []);
+
 /** What happens when a track ends: stop at the end of the queue, cycle the queue, or loop the track */
 export const repeatMode = persisted<'off' | 'all' | 'one'>('repeatMode', 'off');
 

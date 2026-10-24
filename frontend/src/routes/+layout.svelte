@@ -83,13 +83,19 @@
 			</a>
 
 			<!-- Desktop nav links -->
-			<div class="hidden md:flex items-center gap-1 ml-1">
+			<div class="hidden lg:flex items-center gap-1 ml-1 whitespace-nowrap">
 				<a href={resolve('/')}
 					class="px-3 py-1.5 rounded-lg text-sm transition-colors
 						   {page.route.id === '/'
 							? 'text-accent-500 font-medium'
 							: 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100'}"
 				>Home</a>
+				<a href={resolve('/library')}
+					class="px-3 py-1.5 rounded-lg text-sm transition-colors
+						   {page.route.id === '/library'
+							? 'text-accent-500 font-medium'
+							: 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100'}"
+				>Library</a>
 				<a href={resolve('/player')}
 					class="px-3 py-1.5 rounded-lg text-sm transition-colors
 						   {page.route.id === '/player'
@@ -122,7 +128,7 @@
 			<button
 				onclick={() => settingsOpen = true}
 				aria-label="Settings"
-				class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm transition-colors
+				class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm transition-colors shrink-0 whitespace-nowrap
 					   {hasMidiOutputs
 						? 'text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'
 						: 'text-accent-500 bg-accent-500/10 hover:bg-accent-500/20'}"
@@ -141,7 +147,7 @@
 			<button
 				onclick={() => mobileMenuOpen = !mobileMenuOpen}
 				aria-label="Toggle menu"
-				class="md:hidden p-1.5 rounded-lg text-surface-600 dark:text-surface-400
+				class="lg:hidden p-1.5 rounded-lg text-surface-600 dark:text-surface-400
 					   hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
 			>
 				{#if mobileMenuOpen}
@@ -158,11 +164,11 @@
 
 		<!-- Mobile menu -->
 		{#if mobileMenuOpen}
-			<div class="md:hidden border-t border-surface-200 dark:border-surface-800
+			<div class="lg:hidden border-t border-surface-200 dark:border-surface-800
 						bg-surface-50/95 dark:bg-surface-950/95 backdrop-blur-sm">
 				<div class="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-1">
 					{#if !isHome}
-						<div class="pb-2">
+						<div class="pb-2 md:hidden">
 							<SearchBar />
 						</div>
 					{/if}
@@ -172,6 +178,12 @@
 								? 'text-accent-500 font-medium bg-accent-500/10'
 								: 'text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'}"
 					>Home</a>
+					<a href={resolve('/library')}
+						class="px-3 py-2 rounded-lg text-sm transition-colors
+							   {page.route.id === '/library'
+								? 'text-accent-500 font-medium bg-accent-500/10'
+								: 'text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'}"
+					>Library</a>
 					<a href={resolve('/player')}
 						class="px-3 py-2 rounded-lg text-sm transition-colors
 							   {page.route.id === '/player'
