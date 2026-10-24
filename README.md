@@ -77,19 +77,20 @@ The image is built to comply with OpenShift's **restricted / restricted-v2 SCC**
 
 #### Deploy with the provided manifests
 
-```bash
-# Create the dataset PVC first
-oc apply -f pvc.yaml
+All manifests live in [`deploy/`](deploy/) and work on both Kubernetes and OpenShift:
 
-# Deploy the application (edit image: field first)
-oc apply -f deployment.yaml
-oc apply -f service.yaml
-oc apply -f route.yaml
+```bash
+# Core: dataset PVC, Deployment, Service
+oc apply -k deploy/            # or: kubectl apply -k deploy/
+
+# Expose it with one of:
+oc apply -f deploy/route.yaml          # OpenShift Route (TLS edge)
+kubectl apply -f deploy/ingress.yaml   # Kubernetes Ingress (edit host/class first)
 ```
 
-`route.yaml` uses TLS edge termination. Set the `host:` field or remove it to let OpenShift auto-generate a hostname.
-
-> **Dataset auto-download**: the first startup downloads the MAESTRO v3.0.0 MIDI archive (~60 MB, ~85 MB extracted) into the PVC; the 3 Gi request is generous. If your cluster lacks egress access to Google Cloud Storage, pre-populate the PVC and set `MAESTRO_AUTO_DOWNLOAD_DATASET=false`.
+- **Image and updates:** the image is pinned to a release tag (e.g. `0.5.0`) so [Keel](https://keel.sh) can roll out newer releases (`keel.sh/policy: all`). Keel can't upgrade a deployment pinned to `:latest`.
+- **First boot:** the pod downloads the MAESTRO v3.0.0 MIDI archive (~60 MB, ~85 MB extracted) into the PVC. A `startupProbe` allows up to 10 minutes for this. If your cluster lacks egress to Google Cloud Storage, pre-populate the PVC and set `MAESTRO_AUTO_DOWNLOAD_DATASET=false`.
+- **Subfolder:** set `MAESTRO_BASE_PATH` in `deploy/deployment.yaml` and the matching `path:` on the Route or Ingress.
 
 ### Production (without Docker)
 

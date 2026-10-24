@@ -1,0 +1,11 @@
+# Core resources for Kubernetes and OpenShift:
+#   kubectl apply -k deploy/   (or: oc apply -k deploy/)
+# Then expose it with ONE of:
+#   oc apply -f deploy/route.yaml          # OpenShift
+#   kubectl apply -f deploy/ingress.yaml   # Kubernetes (edit host/class first)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml

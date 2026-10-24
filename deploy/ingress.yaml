@@ -1,0 +1,25 @@
+# Plain Kubernetes Ingress (Traefik, ingress-nginx, ...). Edit host and class.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: maestro-midi-player
+  labels:
+    app: maestro-midi-player
+spec:
+  # ingressClassName: traefik
+  rules:
+    - host: midi.example.com
+      http:
+        paths:
+          # Subfolder hosting: use path /midi and set MAESTRO_BASE_PATH=/midi in
+          # deployment.yaml. No rewrite/strip annotation needed either way.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: maestro-midi-player
+                port:
+                  name: http
+  # tls:
+  #   - hosts: [midi.example.com]
+  #     secretName: midi-example-com-tls
