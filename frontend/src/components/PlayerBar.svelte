@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { currentTrack, playerState, queue, activeNotes, pedalState, showPianoViz, showPedalIndicators, showPedalNames } from '$lib/stores';
-	import { midiPlayer } from '$lib/midi-player';
-	import { formatDuration } from '$lib/utils';
+	import { currentTrack, playerState, queue, activeNotes, pedalState, showPianoViz, showPedalIndicators, showPedalNames } from '#lib/stores.js';
+	import { midiPlayer } from '#lib/midi-player.js';
+	import { formatDuration } from '#lib/utils.js';
 	import { onMount, onDestroy } from 'svelte';
 
 	let position = $state(0);

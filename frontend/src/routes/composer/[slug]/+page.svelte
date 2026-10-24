@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
-	import { getComposer, getComposerTracks, composerImageUrl } from '$lib/api';
-	import { currentTrack, queue, toasts } from '$lib/stores';
-	import type { Composer, Track } from '$lib/stores';
-	import { formatTotalDuration } from '$lib/utils';
+	import { getComposer, getComposerTracks, composerImageUrl } from '#lib/api.js';
+	import { currentTrack, queue, toasts } from '#lib/stores.js';
+	import type { Composer, Track } from '#lib/stores.js';
+	import { formatTotalDuration } from '#lib/utils.js';
 	import TrackList from '../../../components/TrackList.svelte';
 
 	let composer = $state<Composer | null>(null);

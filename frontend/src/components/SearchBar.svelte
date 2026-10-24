@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getTracks, getCompetitions } from '$lib/api';
-	import type { Track } from '$lib/stores';
+	import { getTracks, getCompetitions } from '#lib/api.js';
+	import type { Track } from '#lib/stores.js';
 	import { goto } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 

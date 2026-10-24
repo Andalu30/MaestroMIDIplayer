@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CompetitionSummary } from '$lib/stores';
+	import type { CompetitionSummary } from '#lib/stores.js';
 
 	let { competition }: { competition: CompetitionSummary } = $props();
 
