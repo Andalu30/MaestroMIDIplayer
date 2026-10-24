@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { Track } from '$lib/stores';
-	import { currentTrack, queue, toasts } from '$lib/stores';
-	import { formatDuration } from '$lib/utils';
+	import type { Track } from '#lib/stores.js';
+	import { currentTrack, queue, toasts } from '#lib/stores.js';
+	import { formatDuration } from '#lib/utils.js';
 
 	interface TrackGroup {
 		title: string;

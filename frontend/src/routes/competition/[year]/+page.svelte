@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { getCompetition } from '$lib/api';
-	import { currentTrack, queue, toasts } from '$lib/stores';
-	import type { CompetitionYear, Track } from '$lib/stores';
-	import { formatTotalDuration } from '$lib/utils';
+	import { getCompetition } from '#lib/api.js';
+	import { currentTrack, queue, toasts } from '#lib/stores.js';
+	import type { CompetitionYear, Track } from '#lib/stores.js';
+	import { formatTotalDuration } from '#lib/utils.js';
 	import TrackList from '../../../components/TrackList.svelte';
 
 	let competition = $state<CompetitionYear | null>(null);

@@ -26,7 +26,7 @@ A web app for browsing and playing the [MAESTRO v3.0.0](https://magenta.tensorfl
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.12+ / FastAPI, managed with uv |
-| Frontend | SvelteKit 2 (Svelte 5) + Tailwind CSS 4 |
+| Frontend | SvelteKit 3 (Svelte 5) + Tailwind CSS 4 |
 | Client MIDI | Web MIDI API + @tonejs/midi |
 | Composer images | Wikipedia PageImages API, disk-cached |
 | Database | None — CSV loaded into memory at startup |
@@ -35,7 +35,7 @@ A web app for browsing and playing the [MAESTRO v3.0.0](https://magenta.tensorfl
 ## Prerequisites
 
 - **Python 3.12+** and [uv](https://docs.astral.sh/uv/)
-- **Node.js 22+**
+- **Node.js 22.17+** (SvelteKit 3 minimum; 24 LTS recommended)
 - A Chromium-based browser (Chrome, Edge) for Web MIDI API support
 
 ## Getting Started

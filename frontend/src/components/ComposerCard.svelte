@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Composer } from '$lib/stores';
-	import { composerImageUrl } from '$lib/api';
+	import type { Composer } from '#lib/stores.js';
+	import { composerImageUrl } from '#lib/api.js';
 
 	let { composer }: { composer: Composer } = $props();
 

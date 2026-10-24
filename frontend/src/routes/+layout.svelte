@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
-	import { theme, playerState, toasts, currentTrack } from '$lib/stores';
-	import { midiPlayer } from '$lib/midi-player';
+	import { theme, playerState, toasts, currentTrack } from '#lib/stores.js';
+	import { midiPlayer } from '#lib/midi-player.js';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import ThemeToggle from '../components/ThemeToggle.svelte';

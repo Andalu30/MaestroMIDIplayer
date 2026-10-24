@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getComposers, getCompetitions } from '$lib/api';
-	import type { Composer, CompetitionSummary } from '$lib/stores';
+	import { getComposers, getCompetitions } from '#lib/api.js';
+	import type { Composer, CompetitionSummary } from '#lib/stores.js';
 	import ComposerCard from '../components/ComposerCard.svelte';
 	import CompetitionCard from '../components/CompetitionCard.svelte';
 	import SearchBar from '../components/SearchBar.svelte';

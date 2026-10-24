@@ -26,7 +26,7 @@ docker compose up --build   # Multi-stage build, serves both API + frontend on :
 | Component | Tech | Purpose |
 |-----------|------|---------|
 | **Backend** | Python 3.12+ / FastAPI / uv | API routes, CSV→memory load, composer image caching, server-side MIDI |
-| **Frontend** | SvelteKit 2 / Svelte 5 / Tailwind 4 | Browse composers/competitions, player UI, Web MIDI playback |
+| **Frontend** | SvelteKit 3 / Svelte 5 / Tailwind 4 | Browse composers/competitions, player UI, Web MIDI playback |
 | **Data** | CSV (no database) | MAESTRO dataset loaded entirely at startup into `store` |
 | **Deployment** | Docker (multi-stage) | Node build → Python image, static frontend mounted |
 
@@ -101,7 +101,8 @@ frontend/src/
 - **Dev proxy**: Vite routes `/api/*` → `http://localhost:8000` (see `vite.config.ts`)
 - **Tailwind**: Configured via `@tailwindcss/vite` plugin
 - **TypeScript**: Strict mode, `moduleResolution: "bundler"`
-- **SvelteKit adapter**: Static, SPA fallback to `index.html`
+- **SvelteKit adapter**: Static, SPA fallback to `index.html` — configured in `vite.config.ts` (SvelteKit 3 has no `svelte.config.js`)
+- **Imports**: use the `#lib/…` subpath alias with a `.js` extension (e.g. `#lib/api.js`); `$lib` no longer exists in SvelteKit 3
 
 ## API Reference
 

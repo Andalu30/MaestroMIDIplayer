@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getComposers } from '$lib/api';
-	import type { Composer } from '$lib/stores';
+	import { getComposers } from '#lib/api.js';
+	import type { Composer } from '#lib/stores.js';
 	import ComposerCard from '../../components/ComposerCard.svelte';
 
 	let composers = $state<Composer[]>([]);

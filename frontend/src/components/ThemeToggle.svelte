@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { theme } from '$lib/stores';
+	import { theme } from '#lib/stores.js';
 
 	function toggle() {
 		theme.toggle();

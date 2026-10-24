@@ -1,14 +1,14 @@
 import { writable } from 'svelte/store';
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 
 function createThemeStore() {
-	const initial = browser ? (localStorage.getItem('theme') || 'dark') : 'dark';
+	const initial = browser ? localStorage.getItem('theme') || 'dark' : 'dark';
 	const { subscribe, set, update } = writable(initial);
 
 	return {
 		subscribe,
 		toggle: () => {
-			update(current => {
+			update((current) => {
 				const next = current === 'dark' ? 'light' : 'dark';
 				if (browser) {
 					localStorage.setItem('theme', next);
@@ -108,11 +108,14 @@ function createToastStore() {
 		subscribe,
 		show(message: string, duration = 2500) {
 			const id = ++nextId;
-			update(toasts => [...toasts, { id, message }]);
-			setTimeout(() => {
-				update(toasts => toasts.filter(t => t.id !== id));
-			}, duration);
-		},
+			update((toasts) => [...toasts, { id, message }]);
+			setTimeout(
+				() => {
+					update((toasts) => toasts.filter((t) => t.id !== id));
+				},
+				duration
+			);
+		}
 	};
 }
 

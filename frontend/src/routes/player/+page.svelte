@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { midiPlayer, type TrackInfo } from '$lib/midi-player';
-	import { currentTrack, queue } from '$lib/stores';
-	import type { Track } from '$lib/stores';
-	import { formatDuration } from '$lib/utils';
+	import { midiPlayer, type TrackInfo } from '#lib/midi-player.js';
+	import { currentTrack, queue } from '#lib/stores.js';
+	import type { Track } from '#lib/stores.js';
+	import { formatDuration } from '#lib/utils.js';
 
 	let dragOver = $state(false);
 	let fileName = $state('');

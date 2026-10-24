@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { showPianoViz, showPedalIndicators, showPedalNames } from '$lib/stores';
-	import { midiPlayer } from '$lib/midi-player';
+	import { showPianoViz, showPedalIndicators, showPedalNames } from '#lib/stores.js';
+	import { midiPlayer } from '#lib/midi-player.js';
 	import { onMount } from 'svelte';
 
 	let { open = false, onclose }: { open: boolean; onclose: () => void } = $props();
